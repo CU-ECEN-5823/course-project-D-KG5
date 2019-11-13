@@ -26,6 +26,8 @@
 /* Buttons and LEDs headers */
 #include "buttons.h"
 #include "leds.h"
+#include "letimer.h"
+#include "adc.h"
 
 /* Display Interface header */
 #include "display_interface.h"
@@ -121,6 +123,8 @@ void appMain(gecko_configuration_t *pConfig)
   // led_init() is called later as needed to (re)initialize the LEDs
   led_init();
   button_init();
+  letimer_init();
+  adc_init();
 
   while (1) {
     // Event pointer for handling events
@@ -214,15 +218,16 @@ static void handle_boot_event(void)
       || GPIO_PinInGet(BSP_BUTTON1_PORT, BSP_BUTTON1_PIN) == 0) {
     initiate_factory_reset();
   } else {
+	// Initialize Mesh stack in Node operation mode, wait for initialized event
+	result = gecko_cmd_mesh_node_init()->result;
+	if (result) {
+	  snprintf(buf, 30, "init failed (0x%x)", result);
+	  DI_Print(buf, DI_ROW_STATUS);
+	}
     struct gecko_msg_system_get_bt_address_rsp_t* pAddr =
       gecko_cmd_system_get_bt_address();
     set_device_name(&pAddr->address);
-    // Initialize Mesh stack in Node operation mode, wait for initialized event
-    result = gecko_cmd_mesh_node_init()->result;
-    if (result) {
-      snprintf(buf, 30, "init failed (0x%x)", result);
-      DI_Print(buf, DI_ROW_STATUS);
-    }
+
   }
 }
 
@@ -405,16 +410,18 @@ void handle_timer_event(uint8_t handle)
  *
  *  @param[in] signal  External signal handle that is serviced by this function.
  ******************************************************************************/
-void handle_external_signal_event(uint8_t signal)
-{
-  if (signal & EXT_SIGNAL_PB0_PRESS) {
-    printf("PB0 pressed\r\n");
-    people_count_decrease();
-  }
-  if (signal & EXT_SIGNAL_PB1_PRESS) {
-    printf("PB1 pressed\r\n");
-    people_count_increase();
-  }
+void handle_external_signal_event(uint8_t signal){
+	if (signal & EXT_SIGNAL_PB0_PRESS) {
+		printf("PB0 pressed\r\n");
+		people_count_decrease();
+	}
+	if (signal & EXT_SIGNAL_PB1_PRESS) {
+		printf("PB1 pressed\r\n");
+		people_count_increase();
+	}
+	if(signal & EXT_SIGNAL_CAP_PRESS){
+		printf("Cap sensor touched\r\n");
+	}
 }
 
 /***************************************************************************//**

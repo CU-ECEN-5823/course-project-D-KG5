@@ -34,6 +34,7 @@
  ******************************************************************************/
 #define EXT_SIGNAL_PB0_PRESS      0x01
 #define EXT_SIGNAL_PB1_PRESS      0x02
+#define EXT_SIGNAL_CAP_PRESS      0x03
 
 /***************************************************************************//**
  * Button initialization. Configure pushbuttons PB0, PB1 as inputs.

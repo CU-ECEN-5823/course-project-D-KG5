@@ -15,7 +15,9 @@
 // [ACMP1]$
 
 // $[ADC0]
-// [ADC0]$
+// [ADC0]$ PosSelAPORT2XCH9
+#define BSP_ADC_PIN                                   (9U)
+#define BSP_ADC_PORT                                  (gpioPortc)
 
 // $[ANTDIV]
 // [ANTDIV]$
@@ -45,6 +47,9 @@
 
 #define BSP_BUTTON1_PIN                               (7U)
 #define BSP_BUTTON1_PORT                              (gpioPortF)
+
+#define BSP_BUTTONCAP_PIN                             (3U)
+#define BSP_BUTTONCAP_PORT                            (gpioPortF)
 
 #define BSP_BUTTON_COUNT                              (2U)
 #define BSP_BUTTON_INIT                               { { BSP_BUTTON0_PORT, BSP_BUTTON0_PIN }, { BSP_BUTTON1_PORT, BSP_BUTTON1_PIN } }

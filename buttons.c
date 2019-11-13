@@ -28,11 +28,11 @@
 /*******************************************************************************
  * Button initialization. Configure pushbuttons PB0, PB1 as inputs.
  ******************************************************************************/
-void button_init(void)
-{
-  // configure pushbutton PB0 and PB1 as inputs, with pull-up enabled
+void button_init(void){
+  // configure pushbutton PB0 and PB1 and PF3 (cap) as inputs, with pull-up enabled
   GPIO_PinModeSet(BSP_BUTTON0_PORT, BSP_BUTTON0_PIN, gpioModeInputPull, 1);
   GPIO_PinModeSet(BSP_BUTTON1_PORT, BSP_BUTTON1_PIN, gpioModeInputPull, 1);
+  GPIO_PinModeSet(BSP_BUTTONCAP_PORT, BSP_BUTTONCAP_PIN, gpioModeInputPull, 1);
 }
 
 /***************************************************************************//**
@@ -47,25 +47,31 @@ void button_init(void)
  *       that will generate an event gecko_evt_system_external_signal_id
  *       which is then handled in the main loop.
  ******************************************************************************/
-void button_interrupt(uint8_t pin)
-{
-  if (pin == BSP_BUTTON0_PIN) {
-    if (GPIO_PinInGet(BSP_BUTTON0_PORT, BSP_BUTTON0_PIN) == 1) {
-      gecko_external_signal(EXT_SIGNAL_PB0_PRESS);
-    }
-  } else if (pin == BSP_BUTTON1_PIN) {
-    if (GPIO_PinInGet(BSP_BUTTON1_PORT, BSP_BUTTON1_PIN) == 1) {
-      gecko_external_signal(EXT_SIGNAL_PB1_PRESS);
-    }
-  }
+void button_interrupt(uint8_t pin){
+	switch(pin){
+	case BSP_BUTTON0_PIN:
+	    if (GPIO_PinInGet(BSP_BUTTON0_PORT, BSP_BUTTON0_PIN) == 1) {
+	      gecko_external_signal(EXT_SIGNAL_PB0_PRESS);
+	    }
+		break;
+	case BSP_BUTTON1_PIN:
+	    if (GPIO_PinInGet(BSP_BUTTON1_PORT, BSP_BUTTON1_PIN) == 1) {
+	      gecko_external_signal(EXT_SIGNAL_PB1_PRESS);
+	    }
+		break;
+	case BSP_BUTTONCAP_PIN:
+		if (GPIO_PinInGet(BSP_BUTTONCAP_PORT, BSP_BUTTONCAP_PIN) == 1) {
+		  gecko_external_signal(EXT_SIGNAL_CAP_PRESS);
+		}
+		break;
+	}
 }
 
 /*******************************************************************************
  * Enable button interrupts for PB0, PB1. Both GPIOs are configured to trigger
  * an interrupt on the rising edge (button released).
  ******************************************************************************/
-void enable_button_interrupts(void)
-{
+void enable_button_interrupts(void){
   GPIOINT_Init();
 
   /* configure interrupt for PB0 and PB1, rising edges */
@@ -73,10 +79,15 @@ void enable_button_interrupts(void)
                     true, false, true);
   GPIO_ExtIntConfig(BSP_BUTTON1_PORT, BSP_BUTTON1_PIN, BSP_BUTTON1_PIN,
                     true, false, true);
+  GPIO_ExtIntConfig(BSP_BUTTONCAP_PORT, BSP_BUTTONCAP_PIN, BSP_BUTTONCAP_PIN,
+                    true, false, true);
+
 
   /* register the callback function that is invoked when interrupt occurs */
   GPIOINT_CallbackRegister(BSP_BUTTON0_PIN, button_interrupt);
   GPIOINT_CallbackRegister(BSP_BUTTON1_PIN, button_interrupt);
+  GPIOINT_CallbackRegister(BSP_BUTTONCAP_PIN, button_interrupt);
+
 }
 
 /** @} (end addtogroup Buttons) */
