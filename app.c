@@ -28,6 +28,7 @@
 #include "leds.h"
 #include "letimer.h"
 #include "adc.h"
+#include "ldma.h"
 
 /* Display Interface header */
 #include "display_interface.h"
@@ -55,9 +56,17 @@
 /*******************************************************************************
  * Timer handles defines.
  ******************************************************************************/
-#define TIMER_ID_RESTART            78
-#define TIMER_ID_FACTORY_RESET      77
-#define TIMER_ID_PROVISIONING       66
+//#define TIMER_ID_RESTART            78
+//#define TIMER_ID_FACTORY_RESET      77
+//#define TIMER_ID_PROVISIONING       66
+
+/** Application timer enumeration. */
+typedef enum {
+  /* Timer for toggling the the EXTCOMIN signal for the LCD display */
+	TIMER_ID_RESTART,
+	TIMER_ID_FACTORY_RESET,
+	TIMER_ID_PROVISIONING
+} swTimer_t;
 
 #define TIMER_CLK_FREQ ((uint32_t)32768) ///< Timer Frequency used
 /// Convert miliseconds to timer ticks
@@ -123,8 +132,11 @@ void appMain(gecko_configuration_t *pConfig)
   // led_init() is called later as needed to (re)initialize the LEDs
   led_init();
   button_init();
-  letimer_init();
+
   adc_init();
+  letimer_init();
+  ldma_init();
+
 
   while (1) {
     // Event pointer for handling events
@@ -421,6 +433,13 @@ void handle_external_signal_event(uint8_t signal){
 	}
 	if(signal & EXT_SIGNAL_CAP_PRESS){
 		printf("Cap sensor touched\r\n");
+	}
+	if(signal & EXT_SIGNAL_LDMA_INT){
+//		for(int i = 0; i < ADC_BUFFER_SIZE; i++){
+//			printf("ADCBuffer[%d]: %lu\r\n", i, adcBuffer[i]);
+//		}
+		uint32_t adcAvg = (adcBuffer[0] + adcBuffer[1] + adcBuffer[2] + adcBuffer[3]) / ADC_BUFFER_SIZE;
+		printf("ADCAvg: %lu\r\n", adcAvg);
 	}
 }
 

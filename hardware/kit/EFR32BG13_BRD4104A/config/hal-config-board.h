@@ -17,7 +17,7 @@
 // $[ADC0]
 // [ADC0]$ PosSelAPORT2XCH9
 #define BSP_ADC_PIN                                   (9U)
-#define BSP_ADC_PORT                                  (gpioPortc)
+#define BSP_ADC_PORT                                  (gpioPortC)
 
 // $[ANTDIV]
 // [ANTDIV]$

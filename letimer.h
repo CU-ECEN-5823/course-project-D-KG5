@@ -8,22 +8,24 @@
 #ifndef SRC_LETIMER_H_
 #define SRC_LETIMER_H_
 
+#include "em_device.h"
+#include "em_chip.h"
+#include "em_cmu.h"
+#include "em_emu.h"
+#include "em_adc.h"
+#include "em_gpio.h"
+#include "em_letimer.h"
+#include "em_prs.h"
+#include "em_ldma.h"
+
 void letimer_init(void);
 
 /* set blink period in ms */
-#ifndef PERIOD
-#define PERIOD 1000
+#ifndef INT_FREQ
+#define INT_FREQ 1
 #endif
 
 /* convert from ms to ticks */
 #define TICKS_IN_MS(X)        32768 * (X) / 1000
-
-///** Application timer enumeration. */
-//typedef enum {
-//  /* Timer for toggling the the EXTCOMIN signal for the LCD display */
-//  DISP_UPDATE_TIMER,
-//  FACTORY_RESET_TIMER,
-//  ID_RETRANS_TIMER
-//} swTimer_t;
 
 #endif /* SRC_LETIMER_H_ */

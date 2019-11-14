@@ -9,9 +9,10 @@
 #define ADC_H_
 
 #define ADC_FREQ	16000000
+#define ADC_BUFFER_SIZE 4
+#define ADC_DVL 2
 
-volatile uint32_t sample;
-volatile uint32_t mV;
+uint32_t adcBuffer[ADC_BUFFER_SIZE];
 
 void adc_init(void);
 

@@ -6,25 +6,18 @@
  */
 #include <stdio.h>
 #include "letimer.h"
-#include "em_device.h"
-#include "em_chip.h"
-#include "em_cmu.h"
-#include "em_emu.h"
-#include "em_adc.h"
-#include "em_gpio.h"
-#include "em_letimer.h"
+#include "ldma.h"
 
+/**
+ * Inspired by SiliconLabs/peripheral_examples by silabs-DavidS et al.
+ * https://github.com/SiliconLabs/peripheral_examples
+ */
 void letimer_init(void){
-	/* select ULFRCO and set prescaler */
-	CMU_OscillatorEnable(cmuOsc_ULFRCO, true, true);
-	CMU_ClockSelectSet(cmuClock_LFA, cmuSelect_ULFRCO);	/* set up ULFRCO clock source and LETIMER0 clock */
-	CMU_ClockDivSet(cmuClock_LFA, 1);
-	CMU_ClockEnable(cmuClock_LFA, true);
-	CMU_ClockDivSet(cmuClock_LETIMER0, 1);	/* set prescaler to 1 so no change in clk rate */
+	/* select LFRCO */
+	CMU_OscillatorEnable(cmuOsc_LFRCO, true, true);
+	CMU_ClockEnable(cmuClock_HFLE, true);	/* enable HFLE for low energy */
+	CMU_ClockSelectSet(cmuClock_LFA, cmuSelect_LFRCO);	/* set up LFRCO clock source and LETIMER0 clock */
 	CMU_ClockEnable(cmuClock_LETIMER0, true);
-
-	/* set COMP0 (period) register */
-	LETIMER_CompareSet(LETIMER0, 0, (CMU_ClockFreqGet(cmuClock_LETIMER0)) * (PERIOD) / 1000);
 
 	/* set LETIMER config struct */
 	const LETIMER_Init_TypeDef LETIMER_INITIAL_CONFIG = {
@@ -32,24 +25,16 @@ void letimer_init(void){
 		.debugRun = true,
 		.comp0Top = true,	/* load COMP0 into CNT when underflowing */
 		.bufTop = false,	/* dont need because repeat is free */
-		.ufoa0 = letimerUFOANone,
-		.ufoa1 = letimerUFOANone,
+		.ufoa0 = letimerUFOAPulse,
 		.repMode = letimerRepeatFree
 	};
 
-	LETIMER_IntEnable(LETIMER0, LETIMER_IF_UF);
 	LETIMER_Init(LETIMER0, &LETIMER_INITIAL_CONFIG);
 
-	NVIC_ClearPendingIRQ(LETIMER0_IRQn);
-	NVIC_EnableIRQ(LETIMER0_IRQn);
-}
+	LETIMER_RepeatSet(LETIMER0, 0, 1);	/* pulse on underflow */
+	LETIMER_CompareSet(LETIMER0, 0, CMU_ClockFreqGet(cmuClock_LETIMER0) / INT_FREQ);	/* compare on wake-up count */
 
-void LETIMER0_IRQHandler(void){
-//	printf("LETIMER handler\r\n");
-	uint32_t reason = LETIMER_IntGet(LETIMER0);	/* get interrupt flag and clear it */
-	if((reason & LETIMER_IF_UF) == LETIMER_IF_UF){
-		LETIMER_IntClear(LETIMER0, reason);
-		ADC_Start(ADC0, adcStartSingle);
-	}
+	CMU_ClockEnable(cmuClock_PRS, true);	/* enable ASYBC PRS using LETIMER0 to trigger ADC in EM2 */
+	PRS_SourceAsyncSignalSet(PRS_CHANNEL, PRS_CH_CTRL_SOURCESEL_LETIMER0, PRS_CH_CTRL_SIGSEL_LETIMER0CH0);
 }
 
