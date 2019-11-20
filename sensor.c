@@ -63,12 +63,12 @@ void sensor_node_init(void)
       .update_interval = UPDATE_INTERVAL_UNDEFINED
     },
     {
-      .property_id = PRESENT_AMBIENT_TEMPERATURE,
+      .property_id = AVERAGE_OUTPUT_VOLTAGE,
       .positive_tolerance = TOLERANCE_UNSPECIFIED,
       .negative_tolerance = TOLERANCE_UNSPECIFIED,
-      .sampling_function = SAMPLING_INSTANTANEOUS,
-      .measurement_period = MEASUREMENT_PERIOD_UNDEFINED,
-      .update_interval = UPDATE_INTERVAL_UNDEFINED
+      .sampling_function = SAMPLING_ARITHMETIC_MEAN,
+      .measurement_period = 3,
+      .update_interval = 1
     }
   };
   uint16_t result = mesh_lib_sensor_server_init(SENSOR_ELEMENT,
@@ -78,7 +78,7 @@ void sensor_node_init(void)
   // Initialize the People Count Sensor
   set_people_count(0);
   // Initialize the Temperature Sensor
-  init_temperature_sensor();
+//  init_temperature_sensor();
 }
 
 /***************************************************************************//**
@@ -90,43 +90,41 @@ void sensor_node_init(void)
  *
  * @param[in] pEvt  Pointer to sensor server get request event.
  ******************************************************************************/
-void handle_sensor_server_get_request(
-  struct gecko_msg_mesh_sensor_server_get_request_evt_t *pEvt)
-{
-  printf("evt:gecko_evt_mesh_sensor_server_get_request_id\r\n");
-  uint8_t sensor_data[5];
-  uint8_t len = 0;
-  if ((pEvt->property_id == PEOPLE_COUNT) || (pEvt->property_id == 0)) {
-    count16_t people_count = get_people_count();
-    printf("people_count: %u\r\n", people_count);
-    len += mesh_sensor_data_to_buf(PEOPLE_COUNT,
-                                   &sensor_data[len],
-                                   (uint8_t*)&people_count);
-  }
-  if ((pEvt->property_id == PRESENT_AMBIENT_TEMPERATURE) || (pEvt->property_id == 0)) {
-    temperature_8_t temperature = get_adc();
-    printf("temperature: %d\r\n", temperature);
-    len += mesh_sensor_data_to_buf(PRESENT_AMBIENT_TEMPERATURE,
-                                   &sensor_data[len],
-                                   (uint8_t*)&temperature);
-  }
+void handle_sensor_server_get_request(struct gecko_msg_mesh_sensor_server_get_request_evt_t *pEvt){
+	printf("evt:gecko_evt_mesh_sensor_server_get_request_id\r\n");
+	uint8_t sensor_data[5];
+	uint8_t len = 0;
+	if ((pEvt->property_id == PEOPLE_COUNT) || (pEvt->property_id == 0)) {
+		count16_t people_count = get_people_count();
+		printf("people_count: %u\r\n", people_count);
+		len += mesh_sensor_data_to_buf(PEOPLE_COUNT,
+									   &sensor_data[len],
+									   (uint8_t*)&people_count);
+	}
+	if ((pEvt->property_id == AVERAGE_OUTPUT_VOLTAGE) || (pEvt->property_id == 0)) {
+		voltage_t muscle_adc = get_adc();
+		printf("muscle_adc: %u\r\n", muscle_adc);
+		len += mesh_sensor_data_to_buf(AVERAGE_OUTPUT_VOLTAGE,
+									   &sensor_data[len],
+									   (uint8_t*)&muscle_adc);
+	}
 
-  if (len > 0) {
-    gecko_cmd_mesh_sensor_server_send_status(SENSOR_ELEMENT,
-                                             pEvt->client_address,
-                                             pEvt->appkey_index,
-                                             NO_FLAGS,
-                                             len, sensor_data);
-  } else {
-    sensor_data[0] = pEvt->property_id & 0xFF;
-    sensor_data[1] = ((pEvt->property_id) >> 8) & 0xFF;
-    sensor_data[3] = 0; // Length is 0 for unsupported property_id
-    gecko_cmd_mesh_sensor_server_send_status(SENSOR_ELEMENT,
-                                             pEvt->client_address,
-                                             pEvt->appkey_index,
-                                             NO_FLAGS,
-                                             3, sensor_data);
-  }
+	if (len > 0) {
+		gecko_cmd_mesh_sensor_server_send_status(SENSOR_ELEMENT,
+												 pEvt->client_address,
+												 pEvt->appkey_index,
+												 NO_FLAGS,
+												 len, sensor_data);
+	} else {
+		sensor_data[0] = pEvt->property_id & 0xFF;
+		sensor_data[1] = ((pEvt->property_id) >> 8) & 0xFF;
+		sensor_data[3] = 0; // Length is 0 for unsupported property_id
+		gecko_cmd_mesh_sensor_server_send_status(SENSOR_ELEMENT,
+												 pEvt->client_address,
+												 pEvt->appkey_index,
+												 NO_FLAGS,
+												 3, sensor_data);
+	}
 }
 
 /***************************************************************************//**
@@ -189,7 +187,7 @@ void handle_sensor_server_publish_event(
 
   temperature_8_t temperature = get_adc();
   printf("In sensor.c: %d", temperature);
-  len += mesh_sensor_data_to_buf(PRESENT_AMBIENT_TEMPERATURE,
+  len += mesh_sensor_data_to_buf(AVERAGE_OUTPUT_VOLTAGE,
                                  &sensor_data[len],
                                  (uint8_t*)&temperature);
 

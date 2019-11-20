@@ -20,9 +20,9 @@
 
 void letimer_init(void);
 
-/* set blink period in ms */
+/* set buffer fill frequency to 1 averaged value per second */
 #ifndef INT_FREQ
-#define INT_FREQ 10
+#define INT_FREQ 4
 #endif
 
 /* convert from ms to ticks */

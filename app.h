@@ -40,10 +40,10 @@
  * @param[in] pConfig  Pointer to stack configuration.
  ******************************************************************************/
 void appMain(gecko_configuration_t *pConfig);
-uint8_t map(uint32_t in_min, uint32_t in_max, uint32_t out_min, uint32_t out_max, uint32_t s);
-uint8_t adcAvgmapped;
+uint16_t map(uint32_t in_min, uint32_t in_max, uint32_t out_min, uint32_t out_max, uint32_t s);
+uint16_t adcAvgmapped;
 uint32_t adcAvg;
-uint8_t get_adc();
+uint16_t get_adc();
 
 /** @} (end addtogroup app) */
 /** @} (end addtogroup Application) */
