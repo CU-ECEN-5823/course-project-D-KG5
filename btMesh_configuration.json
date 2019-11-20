@@ -10,7 +10,7 @@
       {
         "Name": "Primary Element",
         "Loc": "0x0000",
-        "NumS": "5",
+        "NumS": "6",
         "NumV": "0",
         "SIG Models": [
           "0x0000",
@@ -22,7 +22,9 @@
           "0x1101",
           "Sensor Setup Server",
           "0x1000",
-          "Generic OnOff Server"]
+          "Generic OnOff Server",
+          "0x1001",
+          "Generic OnOff Client"]
         ,
         "Vendor Models": [
           ]
@@ -31,7 +33,7 @@
   },
   "Memory configuration": {
     "MAX_ELEMENTS": "1",
-    "MAX_MODELS": "5",
+    "MAX_MODELS": "6",
     "MAX_APP_BINDS": "4",
     "MAX_SUBSCRIPTIONS": "4",
     "MAX_NETKEYS": "4",

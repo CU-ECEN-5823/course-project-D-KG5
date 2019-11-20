@@ -15,9 +15,15 @@
  *
  ******************************************************************************/
 
+#include <stdlib.h>
+#include <stdio.h>
 /* Bluetooth stack headers */
 #include "native_gecko.h"
 #include "gatt_db.h"
+#include "gecko_ble_errors.h"
+#include "mesh_generic_model_capi_types.h"
+#include "mesh_lib.h"
+#include <mesh_sizes.h>
 
 /* Sensor headers */
 #include "sensor.h"
@@ -26,6 +32,7 @@
 
 /* Buttons and LEDs headers */
 #include "buttons.h"
+#include "touch.h"
 #include "leds.h"
 #include "letimer.h"
 #include "adc.h"
@@ -67,7 +74,8 @@ typedef enum {
   /* Timer for toggling the the EXTCOMIN signal for the LCD display */
 	TIMER_ID_RESTART,
 	TIMER_ID_FACTORY_RESET,
-	TIMER_ID_PROVISIONING
+	TIMER_ID_PROVISIONING,
+	TIMER_ID_RETRANS
 } swTimer_t;
 
 #define TIMER_CLK_FREQ ((uint32_t)32768) ///< Timer Frequency used
@@ -76,17 +84,23 @@ typedef enum {
 /// Time equal 0 removes the scheduled timer with the same handle
 #define TIMER_REMOVE  0
 
+#define INVALID_ELEMENT_INDEX (uint16_t) 0xFFFFu
+#define INVALID_CONN_HANDLE (uint8_t) 0xFFu
+
 /// Flag for indicating DFU Reset must be performed
 static uint8_t boot_to_dfu = 0;
 /// Number of active Bluetooth connections
 static uint8_t num_connections = 0;
 /// Handle of the last opened LE connection
-static uint8_t conn_handle = 0xFF;
+uint8_t conn_handle = INVALID_CONN_HANDLE;
 /// Flag for indicating that initialization was performed
 static uint8_t init_done = 0;
 
-//extern uint8_t adcAvgmapped;
-//extern uint32_t adcAvg;
+uint8_t buttonValue = 0xFF;
+
+uint8_t request_count = 0;
+uint8_t trid = 0; /* transaction id */
+uint16_t _elem_index = INVALID_ELEMENT_INDEX;
 
 /*******************************************************************************
  * Function prototypes.
@@ -196,23 +210,20 @@ static void initiate_factory_reset(void)
  *
  * @param[in] pAddr  Pointer to Bluetooth address.
  ******************************************************************************/
-static void set_device_name(bd_addr *pAddr)
-{
+static void set_device_name(bd_addr *pAddr){
   char name[20];
   uint16_t result;
 
   // Create unique device name using the last two bytes of the Bluetooth address
-  snprintf(name, 20, "sensor server %02x:%02x",
+  snprintf(name, 20, "Search Arm %02x:%02x",
            pAddr->addr[1], pAddr->addr[0]);
 
   printf("Device name: '%s'\r\n", name);
 
-  result = gecko_cmd_gatt_server_write_attribute_value(gattdb_device_name,
-                                                       0,
-                                                       strlen(name),
-                                                       (uint8_t *)name)->result;
+  result = gecko_cmd_gatt_server_write_attribute_value(gattdb_device_name, 0,
+		  strlen(name), (uint8_t *)name)->result;
   if (result) {
-    printf("gecko_cmd_gatt_server_write_attribute_value() failed, code %x\r\n",
+	  printf("gecko_cmd_gatt_server_write_attribute_value() failed, code %x\r\n",
            result);
   }
 
@@ -236,7 +247,7 @@ static void handle_boot_event(void)
     initiate_factory_reset();
   } else {
 	// Initialize Mesh stack in Node operation mode, wait for initialized event
-	result = gecko_cmd_mesh_node_init()->result;
+	BTSTACK_CHECK_RESPONSE(gecko_cmd_mesh_node_init());
 	if (result) {
 	  snprintf(buf, 30, "init failed (0x%x)", result);
 	  DI_Print(buf, DI_ROW_STATUS);
@@ -255,24 +266,29 @@ static void handle_boot_event(void)
  *
  * @param[in] pEvt  Pointer to mesh node initialized event.
  ******************************************************************************/
-static void handle_node_initialized_event(
-  struct gecko_msg_mesh_node_initialized_evt_t *pEvt)
-{
+static void handle_node_initialized_event(struct gecko_msg_mesh_node_initialized_evt_t *pEvt){
   printf("node initialized\r\n");
   if (pEvt->provisioned) {
     printf("node is provisioned. address:%x, ivi:%ld\r\n",
            pEvt->address,
            pEvt->ivi);
 
+    _elem_index = 0;
+
     sensor_node_init();
+    touch_state_init();
     enable_button_interrupts();
+
+    BTSTACK_CHECK_RESPONSE(gecko_cmd_mesh_generic_server_init());
+    mesh_lib_init(malloc,free,8);
+
     DI_Print("provisioned", DI_ROW_STATUS);
   } else {
     printf("node is unprovisioned\r\n");
     DI_Print("unprovisioned", DI_ROW_STATUS);
     printf("starting unprovisioned beaconing...\r\n");
     // Enable ADV and GATT provisioning bearer
-    gecko_cmd_mesh_node_start_unprov_beaconing(PB_ADV | PB_GATT);
+    BTSTACK_CHECK_RESPONSE(gecko_cmd_mesh_node_start_unprov_beaconing(PB_ADV | PB_GATT));
   }
 }
 
@@ -302,6 +318,7 @@ void handle_node_provisioning_events(struct gecko_cmd_packet *pEvt)
 
     case gecko_evt_mesh_node_provisioned_id:
       sensor_node_init();
+      touch_state_init();
       printf("node provisioned, got address=%x, ivi:%ld\r\n",
              pEvt->data.evt_mesh_node_provisioned.address,
              pEvt->data.evt_mesh_node_provisioned.iv_index);
@@ -417,6 +434,14 @@ void handle_timer_event(uint8_t handle)
       }
       break;
 
+	case TIMER_ID_RETRANS:
+		send_onoff_request(1);   /* 1 indicates that this is a retransmission */
+		/* stop retransmission timer if it was the last attempt */
+		if (request_count == 0) {
+			gecko_cmd_hardware_set_soft_timer(0, TIMER_ID_RETRANS, false);
+		}
+		break;
+
     default:
       break;
   }
@@ -456,7 +481,26 @@ void handle_external_signal_event(uint8_t signal){
 		people_count_increase();
 	}
 	if(signal & EXT_SIGNAL_CAP_PRESS){
-		printf("Cap sensor touched\r\n");
+		printf("Cap sensor pressed\r\n");
+		CORE_DECLARE_IRQ_STATE;
+		CORE_ENTER_CRITICAL();
+		buttonValue = 0x01; /* set global var to 1 if button is pressed */
+		CORE_EXIT_CRITICAL();
+
+		send_onoff_request(0); /* 0 indicates that this is an original transmission */
+		/* start a repeating soft timer to trigger retransmission of the request after 50 ms delay */
+		gecko_cmd_hardware_set_soft_timer(((32768 * 50) / 1000), TIMER_ID_RETRANS, false);
+	}
+	if(signal & EXT_SIGNAL_CAP_RELEASE){
+		printf("Cap sensor pressed\r\n");
+		CORE_DECLARE_IRQ_STATE;
+		CORE_ENTER_CRITICAL();
+		buttonValue = 0x00; /* set global var to 0 if button is released */
+		CORE_EXIT_CRITICAL();
+
+		send_onoff_request(0); /* 0 indicates that this is an original transmission */
+		/* start a repeating soft timer to trigger retransmission of the request after 50 ms delay */
+		gecko_cmd_hardware_set_soft_timer(((32768 * 50) / 1000), TIMER_ID_RETRANS, false);
 	}
 	if(signal & EXT_SIGNAL_LDMA_INT){
 //		for(int i = 0; i < ADC_BUFFER_SIZE; i++){
@@ -505,6 +549,11 @@ static void handle_gecko_event(uint32_t evt_id, struct gecko_cmd_packet *pEvt)
     case gecko_evt_mesh_sensor_setup_server_set_setting_request_id:
       handle_sensor_server_events(pEvt);
       break;
+
+    case gecko_evt_mesh_generic_server_client_request_id:
+    case gecko_evt_mesh_generic_server_state_changed_id:
+    	mesh_lib_generic_server_event_handler(pEvt);
+    	break;
 
     case gecko_evt_mesh_node_key_added_id:
       printf("got new %s key with index %x\r\n",

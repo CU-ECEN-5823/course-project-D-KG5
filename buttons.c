@@ -61,7 +61,9 @@ void button_interrupt(uint8_t pin){
 		break;
 	case BSP_BUTTONCAP_PIN:
 		if (GPIO_PinInGet(BSP_BUTTONCAP_PORT, BSP_BUTTONCAP_PIN) == 1) {
-		  gecko_external_signal(EXT_SIGNAL_CAP_PRESS);
+			gecko_external_signal(EXT_SIGNAL_CAP_PRESS);
+		} else{
+			gecko_external_signal(EXT_SIGNAL_CAP_RELEASE);
 		}
 		break;
 	}
