@@ -138,6 +138,11 @@ void appMain(gecko_configuration_t *pConfig)
   gecko_stack_init(pConfig);
   gecko_bgapi_classes_init();
 
+  gecko_bgapi_class_mesh_generic_client_init();
+  gecko_bgapi_class_mesh_lpn_init();
+  gecko_bgapi_class_hardware_init();
+  gecko_bgapi_class_flash_init();
+
   // Initialize coexistence interface. Parameters are taken from HAL config.
   gecko_initCoexHAL();
 
@@ -268,6 +273,9 @@ static void handle_boot_event(void)
  ******************************************************************************/
 static void handle_node_initialized_event(struct gecko_msg_mesh_node_initialized_evt_t *pEvt){
   printf("node initialized\r\n");
+
+  BTSTACK_CHECK_RESPONSE(gecko_cmd_mesh_generic_client_init());
+
   if (pEvt->provisioned) {
     printf("node is provisioned. address:%x, ivi:%ld\r\n",
            pEvt->address,
@@ -276,10 +284,9 @@ static void handle_node_initialized_event(struct gecko_msg_mesh_node_initialized
     _elem_index = 0;
 
     sensor_node_init();
-    touch_state_init();
+//    touch_state_init();
     enable_button_interrupts();
 
-    BTSTACK_CHECK_RESPONSE(gecko_cmd_mesh_generic_server_init());
     mesh_lib_init(malloc,free,8);
 
     DI_Print("provisioned", DI_ROW_STATUS);
@@ -317,13 +324,16 @@ void handle_node_provisioning_events(struct gecko_cmd_packet *pEvt)
       break;
 
     case gecko_evt_mesh_node_provisioned_id:
-      sensor_node_init();
-      touch_state_init();
-      printf("node provisioned, got address=%x, ivi:%ld\r\n",
-             pEvt->data.evt_mesh_node_provisioned.address,
-             pEvt->data.evt_mesh_node_provisioned.iv_index);
+    	_elem_index = 0;
+    	mesh_lib_init(malloc,free,8);
+    	sensor_node_init();
+//    	touch_state_init();
+
+		printf("node provisioned, got address=%x, ivi:%ld\r\n",
+			 pEvt->data.evt_mesh_node_provisioned.address,
+			 pEvt->data.evt_mesh_node_provisioned.iv_index);
       // stop LED blinking when provisioning complete
-      gecko_cmd_hardware_set_soft_timer(TIMER_REMOVE, TIMER_ID_PROVISIONING, 0);
+		gecko_cmd_hardware_set_soft_timer(TIMER_REMOVE, TIMER_ID_PROVISIONING, 0);
       led_set_state(LED_STATE_OFF);
       DI_Print("provisioned", DI_ROW_STATUS);
 #ifdef FEATURE_LED_BUTTON_ON_SAME_PIN
@@ -447,6 +457,18 @@ void handle_timer_event(uint8_t handle)
   }
 }
 
+void display_adc(void){
+	if(adcAvgmapped == 0xFFFFu){
+		DI_Print("ADC: UNKNOWN", DI_ROW_TEMPERATURE);
+		printf("ADC: UNKNOWN\r\n");
+	} else{
+		char tmp[10];
+		snprintf(tmp, 21, "ADC: %3u ", adcAvgmapped);
+		DI_Print(tmp, DI_ROW_TEMPERATURE);
+		printf("ADC: %u\r\n", adcAvgmapped);
+	}
+}
+
 /**
  * map adc values for linear calibration
  */
@@ -463,7 +485,7 @@ uint16_t get_adc(){
 	CORE_ENTER_CRITICAL();
 	adcAvgmapped = map(0, 3055, 0, 500, adcAvg);
 	CORE_EXIT_CRITICAL();
-	printf("ADCAvg: %u\r\n", adcAvgmapped);
+	display_adc();
 	return adcAvgmapped;
 }
 /***************************************************************************//**
@@ -472,6 +494,10 @@ uint16_t get_adc(){
  *  @param[in] signal  External signal handle that is serviced by this function.
  ******************************************************************************/
 void handle_external_signal_event(uint8_t signal){
+	CORE_DECLARE_IRQ_STATE;
+	CORE_ENTER_CRITICAL();
+	request_count = 3;
+	CORE_EXIT_CRITICAL();
 	if (signal & EXT_SIGNAL_PB0_PRESS) {
 		printf("PB0 pressed\r\n");
 		people_count_decrease();
@@ -493,7 +519,6 @@ void handle_external_signal_event(uint8_t signal){
 	}
 	if(signal & EXT_SIGNAL_CAP_RELEASE){
 		printf("Cap sensor pressed\r\n");
-		CORE_DECLARE_IRQ_STATE;
 		CORE_ENTER_CRITICAL();
 		buttonValue = 0x00; /* set global var to 0 if button is released */
 		CORE_EXIT_CRITICAL();
@@ -549,11 +574,6 @@ static void handle_gecko_event(uint32_t evt_id, struct gecko_cmd_packet *pEvt)
     case gecko_evt_mesh_sensor_setup_server_set_setting_request_id:
       handle_sensor_server_events(pEvt);
       break;
-
-    case gecko_evt_mesh_generic_server_client_request_id:
-    case gecko_evt_mesh_generic_server_state_changed_id:
-    	mesh_lib_generic_server_event_handler(pEvt);
-    	break;
 
     case gecko_evt_mesh_node_key_added_id:
       printf("got new %s key with index %x\r\n",

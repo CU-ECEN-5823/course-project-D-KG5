@@ -186,7 +186,7 @@ void handle_sensor_server_publish_event(
                                  (uint8_t*)&people_count);
 
   temperature_8_t temperature = get_adc();
-  printf("In sensor.c: %d", temperature);
+//  printf("In sensor.c: %d", temperature);
   len += mesh_sensor_data_to_buf(AVERAGE_OUTPUT_VOLTAGE,
                                  &sensor_data[len],
                                  (uint8_t*)&temperature);
