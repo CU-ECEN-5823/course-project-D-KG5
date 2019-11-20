@@ -22,7 +22,7 @@ void letimer_init(void);
 
 /* set blink period in ms */
 #ifndef INT_FREQ
-#define INT_FREQ 1
+#define INT_FREQ 10
 #endif
 
 /* convert from ms to ticks */

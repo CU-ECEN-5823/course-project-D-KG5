@@ -22,6 +22,7 @@
 /* Sensor headers */
 #include "sensor.h"
 #include "people_count_sensor.h"
+#include "em_core.h"
 
 /* Buttons and LEDs headers */
 #include "buttons.h"
@@ -29,6 +30,7 @@
 #include "letimer.h"
 #include "adc.h"
 #include "ldma.h"
+#include "app.h"
 
 /* Display Interface header */
 #include "display_interface.h"
@@ -82,6 +84,9 @@ static uint8_t num_connections = 0;
 static uint8_t conn_handle = 0xFF;
 /// Flag for indicating that initialization was performed
 static uint8_t init_done = 0;
+
+//extern uint8_t adcAvgmapped;
+//extern uint32_t adcAvg;
 
 /*******************************************************************************
  * Function prototypes.
@@ -417,6 +422,18 @@ void handle_timer_event(uint8_t handle)
   }
 }
 
+uint8_t map(uint32_t in_min, uint32_t in_max, uint32_t out_min, uint32_t out_max, uint32_t s){
+	return out_min + (s - in_min) * (out_max - out_min) / (in_max - in_min);
+}
+
+uint8_t get_adc(){
+	adcAvg = (adcBuffer[0] + adcBuffer[1] + adcBuffer[2] + adcBuffer[3]) / ADC_BUFFER_SIZE;
+	CORE_irqState_t irq_state = CORE_EnterCritical();
+	adcAvgmapped = map(0, 3055, 0, 500, adcAvg);
+	CORE_ExitCritical(irq_state);
+	printf("ADCAvg: %lu\r\n", adcAvgmapped);
+	return adcAvgmapped;
+}
 /***************************************************************************//**
  *  Handling of external signal events.
  *
@@ -438,8 +455,8 @@ void handle_external_signal_event(uint8_t signal){
 //		for(int i = 0; i < ADC_BUFFER_SIZE; i++){
 //			printf("ADCBuffer[%d]: %lu\r\n", i, adcBuffer[i]);
 //		}
-		uint32_t adcAvg = (adcBuffer[0] + adcBuffer[1] + adcBuffer[2] + adcBuffer[3]) / ADC_BUFFER_SIZE;
-		printf("ADCAvg: %lu\r\n", adcAvg);
+		get_adc();
+
 	}
 }
 

@@ -25,12 +25,12 @@ void adc_init(void){
 	ADC_InitSingle_TypeDef initSingle = {
 		adcPRSSELCh0,            /* PRS ch0 (if enabled). */                          \
 		adcAcqTime4,             /* 1 ADC_CLK cycle acquisition time. */              \
-		adcRef2V5,               /* 1.25 V internal reference. */                     \
+		adcRef5V,                /* 5 V internal reference. */                     \
 		adcRes12Bit,             /* 12 bit resolution. */                             \
-		adcPosSelAPORT2XCH9,    /* Select node BUS2XCH9 as posSel */                \
+		adcPosSelAPORT2XCH9,     /* Select node BUS2XCH9 as posSel */                \
 		adcNegSelVSS,            /* Select VSS as negSel */                           \
 		false,                   /* Single-ended input. */                            \
-		true,                   /* PRS enabled. */                                  \
+		true,                    /* PRS enabled. */                                  \
 		false,                   /* Right adjust. */                                  \
 		false,                   /* Deactivate conversion after one scan sequence. */ \
 		false,                   /* No EM2 DMA wakeup from single FIFO DVL */         \

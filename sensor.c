@@ -21,10 +21,14 @@
 /* Bluetooth stack headers */
 #include "native_gecko.h"
 #include "mesh_sensor.h"
+#include "app.h"
+#include "em_core.h"
 
 /* Sensor headers */
 #include "people_count_sensor.h"
 #include "temperature_sensor.h"
+
+//extern uint8_t adcAvgmapped;
 
 /***************************************************************************//**
  * @addtogroup Sensor
@@ -100,7 +104,7 @@ void handle_sensor_server_get_request(
                                    (uint8_t*)&people_count);
   }
   if ((pEvt->property_id == PRESENT_AMBIENT_TEMPERATURE) || (pEvt->property_id == 0)) {
-    temperature_8_t temperature = get_temperature();
+    temperature_8_t temperature = get_adc();
     printf("temperature: %d\r\n", temperature);
     len += mesh_sensor_data_to_buf(PRESENT_AMBIENT_TEMPERATURE,
                                    &sensor_data[len],
@@ -183,7 +187,8 @@ void handle_sensor_server_publish_event(
                                  &sensor_data[len],
                                  (uint8_t*)&people_count);
 
-  temperature_8_t temperature = get_temperature();
+  temperature_8_t temperature = get_adc();
+  printf("In sensor.c: %d", temperature);
   len += mesh_sensor_data_to_buf(PRESENT_AMBIENT_TEMPERATURE,
                                  &sensor_data[len],
                                  (uint8_t*)&temperature);
