@@ -513,7 +513,7 @@ void handle_external_signal_event(uint8_t signal){
 		buttonValue = 0x01; /* set global var to 1 if button is pressed */
 		CORE_EXIT_CRITICAL();
 
-		send_onoff_request(0); /* 0 indicates that this is an original transmission */
+//		send_onoff_request(0); /* 0 indicates that this is an original transmission */
 		/* start a repeating soft timer to trigger retransmission of the request after 50 ms delay */
 		gecko_cmd_hardware_set_soft_timer(((32768 * 50) / 1000), TIMER_ID_RETRANS, false);
 	}
@@ -523,7 +523,7 @@ void handle_external_signal_event(uint8_t signal){
 		buttonValue = 0x00; /* set global var to 0 if button is released */
 		CORE_EXIT_CRITICAL();
 
-		send_onoff_request(0); /* 0 indicates that this is an original transmission */
+//		send_onoff_request(0); /* 0 indicates that this is an original transmission */
 		/* start a repeating soft timer to trigger retransmission of the request after 50 ms delay */
 		gecko_cmd_hardware_set_soft_timer(((32768 * 50) / 1000), TIMER_ID_RETRANS, false);
 	}

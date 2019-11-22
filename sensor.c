@@ -185,11 +185,10 @@ void handle_sensor_server_publish_event(
                                  &sensor_data[len],
                                  (uint8_t*)&people_count);
 
-  temperature_8_t temperature = get_adc();
-//  printf("In sensor.c: %d", temperature);
+  voltage_t muscle_adc = get_adc();
   len += mesh_sensor_data_to_buf(AVERAGE_OUTPUT_VOLTAGE,
                                  &sensor_data[len],
-                                 (uint8_t*)&temperature);
+                                 (uint8_t*)&muscle_adc);
 
   if (len > 0) {
     gecko_cmd_mesh_sensor_server_send_status(SENSOR_ELEMENT,

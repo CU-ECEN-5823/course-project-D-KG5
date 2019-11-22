@@ -20,9 +20,9 @@
 
 void letimer_init(void);
 
-/* set buffer fill frequency to 1 averaged value per second */
+/* set buffer fill frequency to 1 averaged value per 25ms */
 #ifndef INT_FREQ
-#define INT_FREQ 4
+#define INT_FREQ 40
 #endif
 
 /* convert from ms to ticks */

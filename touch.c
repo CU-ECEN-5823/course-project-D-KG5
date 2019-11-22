@@ -47,10 +47,10 @@ extern uint8_t buttonValue;
 /**
  * button_state struct containing current and target onoff states
  */
-//static PACKSTRUCT(struct button_state {
-//	uint8_t onoff_current;
-//	uint8_t onoff_target;
-//}) button_state;
+static PACKSTRUCT(struct button_state {
+	uint8_t onoff_current;
+	uint8_t onoff_target;
+}) button_state;
 
 /**
  * send onoff request based on button state to client
