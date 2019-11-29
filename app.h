@@ -44,10 +44,12 @@ void appMain(gecko_configuration_t *pConfig);
 uint16_t map(uint32_t in_min, uint32_t in_max, uint32_t out_min, uint32_t out_max, uint32_t s);
 uint32_t adcAvg;
 uint16_t get_adc();
+void lpn_state_init(void);
 void lpn_init(void);
+void lpn_deinit(void);
 
 /// lpn state
-static PACKSTRUCT(struct lpn_state {
+PACKSTRUCT(struct lpn_state {
   // On/Off Server state
   uint8_t onoff_current;          /**< Current generic on/off value */
   uint8_t onoff_target;           /**< Target generic on/off value */

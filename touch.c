@@ -72,7 +72,7 @@ void send_onoff_request(uint8_t retrans){
 	if(resp){
 		printf("gecko_cmd_mesh_generic_client_publish failed,code %x\r\n", resp);
 	} else {
-		printf("Request sent, trid = %u, delay = %dms\r\n", trid, delay);
+//		printf("Request sent, trid = %u, delay = %dms\r\n", trid, delay);
 	}
 
 	/* keep track of how many requests has been sent */

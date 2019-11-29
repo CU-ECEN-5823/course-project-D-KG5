@@ -76,7 +76,9 @@ typedef enum {
 	TIMER_ID_FACTORY_RESET,
 	TIMER_ID_PROVISIONING,
 	TIMER_ID_RETRANS,
-	TIMER_ID_SAVE_STATE
+	TIMER_ID_SAVE_STATE,
+	TIMER_ID_NODE_CONFIGURED,
+	TIMER_ID_FRIEND_FIND
 } swTimer_t;
 
 #define TIMER_CLK_FREQ ((uint32_t)32768) ///< Timer Frequency used
@@ -97,8 +99,9 @@ uint8_t conn_handle = INVALID_CONN_HANDLE;
 /// Flag for indicating that initialization was performed
 static uint8_t init_done = 0;
 
-uint8_t buttonValue = 0xFF;
+static uint8 lpn_active = 0;
 
+uint16_t res = 0;
 uint8_t request_count = 0;
 uint8_t trid = 0; /* transaction id */
 uint16_t _elem_index = INVALID_ELEMENT_INDEX;
@@ -289,11 +292,13 @@ static void handle_node_initialized_event(struct gecko_msg_mesh_node_initialized
     _elem_index = 0;
 
     sensor_node_init();
-    lpn_init();
+    lpn_state_init();
 //    touch_state_init();
     enable_button_interrupts();
 
     mesh_lib_init(malloc,free,8);
+
+    lpn_state_init();
 
     DI_Print("provisioned", DI_ROW_STATUS);
   } else {
@@ -333,9 +338,14 @@ void handle_node_provisioning_events(struct gecko_cmd_packet *pEvt)
     	_elem_index = 0;
     	mesh_lib_init(malloc,free,8);
     	sensor_node_init();
-    	lpn_init();
-//    	touch_state_init();
+    	lpn_state_init();
 
+        res = gecko_cmd_hardware_set_soft_timer(((32768 * 30000) / 1000),
+                                                   TIMER_ID_NODE_CONFIGURED,
+                                                   1)->result;
+        if (res) {
+          printf("timer failure?!  %x\r\n", res);
+        }
 		printf("node provisioned, got address=%x, ivi:%ld\r\n",
 			 pEvt->data.evt_mesh_node_provisioned.address,
 			 pEvt->data.evt_mesh_node_provisioned.iv_index);
@@ -355,7 +365,7 @@ void handle_node_provisioning_events(struct gecko_cmd_packet *pEvt)
              pEvt->data.evt_mesh_node_provisioning_failed.result);
       DI_Print("prov failed", DI_ROW_STATUS);
       // start a one-shot timer that will trigger soft reset after small delay
-      gecko_cmd_hardware_set_soft_timer(TIMER_MS_2_TICKS(2000),
+      gecko_cmd_hardware_set_soft_timer(((32768 * 2000) / 1000),
                                         TIMER_ID_RESTART,
                                         1);
       break;
@@ -382,6 +392,7 @@ void handle_le_connection_events(struct gecko_cmd_packet *pEvt)
       num_connections++;
       conn_handle = pEvt->data.evt_le_connection_opened.connection;
       DI_Print("connected", DI_ROW_CONNECTION);
+      lpn_deinit();
       break;
 
     case gecko_evt_le_connection_parameters_id:
@@ -403,6 +414,7 @@ void handle_le_connection_events(struct gecko_cmd_packet *pEvt)
       if (num_connections > 0) {
         if (--num_connections == 0) {
           DI_Print("", DI_ROW_CONNECTION);
+          lpn_state_init();
         }
       }
       break;
@@ -463,12 +475,100 @@ void handle_timer_event(uint8_t handle)
 		lpn_state_store();
 		break;
 
+	case TIMER_ID_NODE_CONFIGURED:
+		if(!lpn_active){
+			printf("trying to initialize lpn...\r\n");
+			lpn_state_init();
+		}
+		break;
+
+	case TIMER_ID_FRIEND_FIND:
+		printf("trying to find friend...\r\n");
+		res = gecko_cmd_mesh_lpn_establish_friendship(0)->result;
+		if(res != 0){
+			printf("Ret code 0x%x\r\n", res);
+		}
+		break;
+
     default:
       break;
   }
 }
 
 void lpn_init(void){
+	uint16 result;
+
+	// Do not initialize LPN if lpn is currently active
+	// or any GATT connection is opened
+	if (lpn_active || num_connections) {
+		return;
+	}
+
+	// Initialize LPN functionality.
+	result = gecko_cmd_mesh_lpn_init()->result;
+	if (result) {
+		printf("LPN init failed (0x%x)\r\n", result);
+		return;
+	}
+	lpn_active = 1;
+	printf("LPN initialized\r\n");
+	DI_Print("LPN on", DI_ROW_LPN);
+
+	// Configure the lpn with following parameters:
+	// - Minimum friend queue length = 3
+	// - Poll timeout = 5 seconds
+	// - Retry interval = 0 ms
+	result = gecko_cmd_mesh_lpn_config(0, 3)->result;
+	if (result) {
+		printf("LPN conf failed (0x%x)\r\n", result);
+	return;
+	}
+	result = gecko_cmd_mesh_lpn_config(1, (5 * 1000))->result;
+	if (result) {
+		printf("LPN conf failed (0x%x)\r\n", result);
+	return;
+	}
+	result = gecko_cmd_mesh_lpn_config(4, 0)->result;
+	if (result) {
+		printf("LPN conf failed (0x%x)\r\n", result);
+	return;
+	}
+
+	printf("trying to find friend...\r\n");
+	result = gecko_cmd_mesh_lpn_establish_friendship(0)->result;
+
+	if (result != 0) {
+		printf("ret.code %x\r\n", result);
+	}
+}
+
+void lpn_deinit(void){
+	uint16_t res;
+
+	if (!lpn_active) {
+		return; // lpn feature is currently inactive
+	}
+
+	res = gecko_cmd_hardware_set_soft_timer(0, // cancel friend finding timer
+											 TIMER_ID_FRIEND_FIND,
+											 1)->result;
+
+	// Terminate friendship if exist
+	res = gecko_cmd_mesh_lpn_terminate_friendship()->result;
+	if (res) {
+		printf("Friendship termination failed (0x%x)\r\n", res);
+	}
+	// turn off lpn feature
+	res = gecko_cmd_mesh_lpn_deinit()->result;
+	if (res) {
+		printf("LPN deinit failed (0x%x)\r\n", res);
+	}
+	lpn_active = 0;
+	printf("LPN deinitialized\r\n");
+	DI_Print("LPN off", DI_ROW_LPN);
+}
+
+void lpn_state_init(void){
 	memset(&lpn_state, 0, sizeof(struct lpn_state));
 	uint16_t res = lpn_state_load();
 	if (res == -1) {
@@ -478,8 +578,8 @@ void lpn_init(void){
 	} else{
 		printf("lpn_state_load(): failed with error 0x%u, using defaults\r\n", res);
 	}
-//	printf("Old Current ADC: %u\r\n", lpn_state.adc_current);
-//	printf("Old Previous ADC: %u\r\n", lpn_state.adc_previous);
+	printf("Old Current ADC: %u\r\n", lpn_state.adc_current);
+	printf("Old Previous ADC: %u\r\n", lpn_state.adc_previous);
 	lpn_state_changed();
 }
 
@@ -672,14 +772,38 @@ static void handle_gecko_event(uint32_t evt_id, struct gecko_cmd_packet *pEvt)
       break;
 
     case gecko_evt_mesh_node_key_added_id:
-      printf("got new %s key with index %x\r\n",
-             pEvt->data.evt_mesh_node_key_added.type == 0 ? "network" : "application",
-             pEvt->data.evt_mesh_node_key_added.index);
-      break;
+		printf("got new %s key with index %x\r\n",
+			 pEvt->data.evt_mesh_node_key_added.type == 0 ? "network" : "application",
+			 pEvt->data.evt_mesh_node_key_added.index);
+
+		res = gecko_cmd_hardware_set_soft_timer(((32768 * 5000) / 1000),
+												 TIMER_ID_NODE_CONFIGURED,
+												 1)->result;
+		if (res) {
+			printf("timer failure?!  0x%x\r\n", res);
+		}
+		break;
 
     case gecko_evt_mesh_node_model_config_changed_id:
-      printf("model config changed\r\n");
-      break;
+		printf("model config changed\r\n");
+		res = gecko_cmd_hardware_set_soft_timer(((32768 * 5000) / 1000),
+												 TIMER_ID_NODE_CONFIGURED,
+												 1)->result;
+		if (res) {
+			printf("timer failure?!  0x%x\r\n", res);
+		}
+		break;
+
+    case gecko_evt_mesh_node_config_set_id:
+		printf("model config set\r\n");
+		// try to init lpn 5 seconds after configuration set
+		res = gecko_cmd_hardware_set_soft_timer(((32768 * 5000) / 1000),
+												 TIMER_ID_NODE_CONFIGURED,
+												 1)->result;
+		if (res) {
+			printf("timer failure?!  %x\r\n", res);
+		}
+		break;
 
     case gecko_evt_mesh_node_reset_id:
       printf("evt: gecko_evt_mesh_node_reset_id\r\n");
@@ -706,6 +830,38 @@ static void handle_gecko_event(uint32_t evt_id, struct gecko_cmd_packet *pEvt)
     case gecko_evt_system_external_signal_id:
       handle_external_signal_event(pEvt->data.evt_system_external_signal.extsignals);
       break;
+
+    case gecko_evt_mesh_lpn_friendship_established_id:
+      printf("friendship established\r\n");
+      DI_Print("LPN with friend", DI_ROW_LPN);
+      break;
+
+    case gecko_evt_mesh_lpn_friendship_failed_id:
+      printf("friendship failed\r\n");
+      DI_Print("no friend", DI_ROW_LPN);
+      // try again in 2 seconds
+      res = gecko_cmd_hardware_set_soft_timer(((32768 * 2000) / 1000),
+                                                 TIMER_ID_FRIEND_FIND,
+                                                 1)->result;
+      if (res) {
+        printf("timer failure?!  %x\r\n", res);
+      }
+      break;
+
+    case gecko_evt_mesh_lpn_friendship_terminated_id:
+      printf("friendship terminated\r\n");
+      DI_Print("friend lost", DI_ROW_LPN);
+      if (num_connections == 0) {
+        // try again in 2 seconds
+        res = gecko_cmd_hardware_set_soft_timer(((32768 * 5000) / 1000),
+                                                   TIMER_ID_FRIEND_FIND,
+                                                   1)->result;
+        if (res) {
+          printf("timer failure?!  %x\r\n", res);
+        }
+      }
+      break;
+
 
     default:
       //printf("unhandled evt: %8.8x class %2.2x method %2.2x\r\n", evt_id, (evt_id >> 16) & 0xFF, (evt_id >> 24) & 0xFF);
