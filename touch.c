@@ -37,20 +37,10 @@
 #include "display_interface.h"
 #include "mesh_lib.h"
 
-
 #include "gecko_ble_errors.h"
 #include "em_core.h"
 #include "display.h"
-
-extern uint8_t buttonValue;
-
-/**
- * button_state struct containing current and target onoff states
- */
-static PACKSTRUCT(struct button_state {
-	uint8_t onoff_current;
-	uint8_t onoff_target;
-}) button_state;
+#include "app.h"
 
 /**
  * send onoff request based on button state to client
@@ -62,12 +52,12 @@ void send_onoff_request(uint8_t retrans){
 	const uint32 transtime = 0; /* using zero transition time by default */
 
 	req.kind = mesh_generic_request_on_off;
-	if(buttonValue){
+	if(lpn_state.onoff_current){
 		req.on_off = MESH_GENERIC_ON_OFF_STATE_ON;
-//		printf("BUTTON PRESSED\r\n");
+		printf("BUTTON PRESSED\r\n");
 	} else{
 		req.on_off = MESH_GENERIC_ON_OFF_STATE_OFF;
-//		printf("BUTTON RELEASED\r\n");
+		printf("BUTTON RELEASED\r\n");
 	}
 	// increment transaction ID for each request, unless it's a retransmission
 	if (retrans == 0){

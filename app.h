@@ -19,6 +19,7 @@
 #define APP_H
 
 #include <gecko_configuration.h>
+#include "native_gecko.h"
 
 /***************************************************************************//**
  * @defgroup app Application Code
@@ -41,9 +42,23 @@
  ******************************************************************************/
 void appMain(gecko_configuration_t *pConfig);
 uint16_t map(uint32_t in_min, uint32_t in_max, uint32_t out_min, uint32_t out_max, uint32_t s);
-uint16_t adcAvgmapped;
 uint32_t adcAvg;
 uint16_t get_adc();
+void lpn_init(void);
+
+/// lpn state
+static PACKSTRUCT(struct lpn_state {
+  // On/Off Server state
+  uint8_t onoff_current;          /**< Current generic on/off value */
+  uint8_t onoff_target;           /**< Target generic on/off value */
+
+  // ADC server
+  uint16_t adc_current;   /**< Current adc value */
+  uint16_t adc_previous;    /**< Target adc value */
+  uint16_t adc_default;   /**< Default adc value */
+  uint16_t adc_min;       /**< Minimum adc value */
+  uint16_t adc_max;       /**< Maximum adc value */
+}) lpn_state;
 
 /** @} (end addtogroup app) */
 /** @} (end addtogroup Application) */

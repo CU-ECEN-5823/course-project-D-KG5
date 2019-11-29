@@ -75,7 +75,8 @@ typedef enum {
 	TIMER_ID_RESTART,
 	TIMER_ID_FACTORY_RESET,
 	TIMER_ID_PROVISIONING,
-	TIMER_ID_RETRANS
+	TIMER_ID_RETRANS,
+	TIMER_ID_SAVE_STATE
 } swTimer_t;
 
 #define TIMER_CLK_FREQ ((uint32_t)32768) ///< Timer Frequency used
@@ -107,6 +108,10 @@ uint16_t _elem_index = INVALID_ELEMENT_INDEX;
  ******************************************************************************/
 bool mesh_bgapi_listener(struct gecko_cmd_packet *evt);
 static void handle_gecko_event(uint32_t evt_id, struct gecko_cmd_packet *pEvt);
+
+static uint16_t lpn_state_load(void);
+static uint8_t lpn_state_store(void);
+static void lpn_state_changed(void);
 
 /***************************************************************************//**
  * Initialise used bgapi classes.
@@ -284,6 +289,7 @@ static void handle_node_initialized_event(struct gecko_msg_mesh_node_initialized
     _elem_index = 0;
 
     sensor_node_init();
+    lpn_init();
 //    touch_state_init();
     enable_button_interrupts();
 
@@ -327,6 +333,7 @@ void handle_node_provisioning_events(struct gecko_cmd_packet *pEvt)
     	_elem_index = 0;
     	mesh_lib_init(malloc,free,8);
     	sensor_node_init();
+    	lpn_init();
 //    	touch_state_init();
 
 		printf("node provisioned, got address=%x, ivi:%ld\r\n",
@@ -452,20 +459,101 @@ void handle_timer_event(uint8_t handle)
 		}
 		break;
 
+	case TIMER_ID_SAVE_STATE:
+		lpn_state_store();
+		break;
+
     default:
       break;
   }
 }
 
+void lpn_init(void){
+	memset(&lpn_state, 0, sizeof(struct lpn_state));
+	uint16_t res = lpn_state_load();
+	if (res == -1) {
+		printf("lpn_state_load(): size of lpn_state has changed, using defaults\r\n");
+	} else if(res == 0){
+		printf("lpn_state_load(): success\r\n");
+	} else{
+		printf("lpn_state_load(): failed with error 0x%u, using defaults\r\n", res);
+	}
+//	printf("Old Current ADC: %u\r\n", lpn_state.adc_current);
+//	printf("Old Previous ADC: %u\r\n", lpn_state.adc_previous);
+	lpn_state_changed();
+}
+
+/***************************************************************************//**
+ * This function loads the saved lpn state from Persistent Storage and
+ * copies the data in the global variable lpn_state.
+ * If PS key with ID 0x4004 does not exist or loading failed,
+ * lpn_state is set to zero and some default values are written to it.
+ *
+ * @return 0 if loading succeeds. error code if loading fails. -1 if lpn_state changed
+ ******************************************************************************/
+static uint16_t lpn_state_load(void){
+	struct gecko_msg_flash_ps_load_rsp_t* pLoad;
+
+	pLoad = gecko_cmd_flash_ps_load(0x4004);
+
+	// Set default values if ps_load fail or size of lpn_state has changed
+	if (pLoad->result || (pLoad->value.len != sizeof(struct lpn_state))) {
+		memset(&lpn_state, 0, sizeof(struct lpn_state));
+		lpn_state.onoff_current = 0x00;
+		lpn_state.onoff_target = 0x01;
+		lpn_state.adc_default = 250;
+		lpn_state.adc_min = 0;
+		lpn_state.adc_max = 500;
+		printf("Defaults used\r\n");
+
+		if(pLoad->result != 0){
+			return pLoad->result;
+		}
+
+		return -1;
+	}
+
+	memcpy(&lpn_state, pLoad->value.data, pLoad->value.len);
+
+	return 0;
+}
+
+
+/***************************************************************************//**
+ * This function saves the current lpn state in Persistent Storage so that
+ * the data is preserved over reboots and power cycles.
+ * The light state is hold in a global variable lightbulb_state.
+ * A PS key with ID 0x4004 is used to store the whole struct.
+ *
+ * @return 0 if saving succeed
+ ******************************************************************************/
+static uint8_t lpn_state_store(void){
+	BTSTACK_CHECK_RESPONSE(gecko_cmd_flash_ps_save(0x4004, sizeof(struct lpn_state), (const uint8*)&lpn_state));
+	printf("LPN State Stored\r\n");
+
+	return 0;
+}
+
+/***************************************************************************//**
+ * This function is called each time the lpn state in RAM is changed.
+ * It sets up a soft timer that will save the state in flash after small delay.
+ * The purpose is to reduce amount of unnecessary flash writes.
+ ******************************************************************************/
+static void lpn_state_changed(void){
+	gecko_cmd_hardware_set_soft_timer(((32768 * 500) / 1000), TIMER_ID_SAVE_STATE, 1);
+	printf("LPN State Changed\r\n");
+}
+
 void display_adc(void){
-	if(adcAvgmapped == 0xFFFFu){
+	if(lpn_state.adc_current == 0xFFFFu){
 		DI_Print("ADC: UNKNOWN", DI_ROW_TEMPERATURE);
 		printf("ADC: UNKNOWN\r\n");
 	} else{
 		char tmp[10];
-		snprintf(tmp, 21, "ADC: %3u ", adcAvgmapped);
+		snprintf(tmp, 21, "ADC: %3u ", lpn_state.adc_current);
 		DI_Print(tmp, DI_ROW_TEMPERATURE);
-		printf("ADC: %u\r\n", adcAvgmapped);
+		printf("Current ADC: %u\r\n", lpn_state.adc_current);
+		printf("Previous ADC: %u\r\n", lpn_state.adc_previous);
 	}
 }
 
@@ -480,13 +568,18 @@ uint16_t map(uint32_t in_min, uint32_t in_max, uint32_t out_min, uint32_t out_ma
  * get adc buffer, then average and map it for calibration
  */
 uint16_t get_adc(){
-	adcAvg = (uint16_t)((adcBuffer[0] + adcBuffer[1] + adcBuffer[2] + adcBuffer[3]) / ADC_BUFFER_SIZE);
 	CORE_DECLARE_IRQ_STATE;
 	CORE_ENTER_CRITICAL();
-	adcAvgmapped = map(0, 3055, 0, 500, adcAvg);
+	adcAvg = (uint16_t)((adcBuffer[0] + adcBuffer[1] + adcBuffer[2] + adcBuffer[3]) / ADC_BUFFER_SIZE);
+
+	lpn_state.adc_previous = lpn_state.adc_current;
+	lpn_state.adc_current = map(0, 3055, 0, 500, adcAvg);
 	CORE_EXIT_CRITICAL();
+
 	display_adc();
-	return adcAvgmapped;
+	lpn_state_changed();
+
+	return lpn_state.adc_current;
 }
 /***************************************************************************//**
  *  Handling of external signal events.
@@ -507,30 +600,33 @@ void handle_external_signal_event(uint8_t signal){
 		people_count_increase();
 	}
 	if(signal & EXT_SIGNAL_CAP_PRESS){
-		printf("Cap sensor pressed\r\n");
+//		printf("Cap sensor pressed\r\n");
 		CORE_DECLARE_IRQ_STATE;
 		CORE_ENTER_CRITICAL();
-		buttonValue = 0x01; /* set global var to 1 if button is pressed */
+		lpn_state.onoff_current = 0x01; /* set global var to 1 if button is pressed */
+		lpn_state.onoff_target = 0x00;
 		CORE_EXIT_CRITICAL();
 
-//		send_onoff_request(0); /* 0 indicates that this is an original transmission */
+		lpn_state_changed();
+
+		send_onoff_request(0); /* 0 indicates that this is an original transmission */
 		/* start a repeating soft timer to trigger retransmission of the request after 50 ms delay */
 		gecko_cmd_hardware_set_soft_timer(((32768 * 50) / 1000), TIMER_ID_RETRANS, false);
 	}
 	if(signal & EXT_SIGNAL_CAP_RELEASE){
-		printf("Cap sensor pressed\r\n");
+//		printf("Cap sensor released\r\n");
 		CORE_ENTER_CRITICAL();
-		buttonValue = 0x00; /* set global var to 0 if button is released */
+		lpn_state.onoff_current = 0x00; /* set global var to 0 if button is released */
+		lpn_state.onoff_target = 0x01;
 		CORE_EXIT_CRITICAL();
 
-//		send_onoff_request(0); /* 0 indicates that this is an original transmission */
+		lpn_state_changed();
+
+		send_onoff_request(0); /* 0 indicates that this is an original transmission */
 		/* start a repeating soft timer to trigger retransmission of the request after 50 ms delay */
 		gecko_cmd_hardware_set_soft_timer(((32768 * 50) / 1000), TIMER_ID_RETRANS, false);
 	}
 	if(signal & EXT_SIGNAL_LDMA_INT){
-//		for(int i = 0; i < ADC_BUFFER_SIZE; i++){
-//			printf("ADCBuffer[%d]: %lu\r\n", i, adcBuffer[i]);
-//		}
 		get_adc();
 	}
 }

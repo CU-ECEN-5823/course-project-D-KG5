@@ -19,6 +19,6 @@ extern uint16_t _elem_index;
 extern uint8_t trid;
 
 void send_onoff_request(uint8_t retrans);
-void touch_state_init(void);
+//void touch_state_init(void);
 
 #endif /* SRC_BTMESH_H_ */
