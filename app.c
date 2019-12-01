@@ -62,13 +62,6 @@
 #define PB_ADV   0x1 ///< Advertising Provisioning Bearer
 #define PB_GATT  0x2 ///< GATT Provisioning Bearer
 
-/*******************************************************************************
- * Timer handles defines.
- ******************************************************************************/
-//#define TIMER_ID_RESTART            78
-//#define TIMER_ID_FACTORY_RESET      77
-//#define TIMER_ID_PROVISIONING       66
-
 /** Application timer enumeration. */
 typedef enum {
   /* Timer for toggling the the EXTCOMIN signal for the LCD display */
@@ -255,8 +248,7 @@ static void handle_boot_event(void)
   char buf[30];
   // Check pushbutton state at startup.
   // If either PB0 or PB1 is held down then do factory reset
-  if (GPIO_PinInGet(BSP_BUTTON0_PORT, BSP_BUTTON0_PIN) == 0
-      || GPIO_PinInGet(BSP_BUTTON1_PORT, BSP_BUTTON1_PIN) == 0) {
+  if (GPIO_PinInGet(BSP_BUTTON0_PORT, BSP_BUTTON0_PIN) == 0 || GPIO_PinInGet(BSP_BUTTON1_PORT, BSP_BUTTON1_PIN) == 0) {
     initiate_factory_reset();
   } else {
 	// Initialize Mesh stack in Node operation mode, wait for initialized event
@@ -265,10 +257,8 @@ static void handle_boot_event(void)
 	  snprintf(buf, 30, "init failed (0x%x)", result);
 	  DI_Print(buf, DI_ROW_STATUS);
 	}
-    struct gecko_msg_system_get_bt_address_rsp_t* pAddr =
-      gecko_cmd_system_get_bt_address();
+    struct gecko_msg_system_get_bt_address_rsp_t* pAddr = gecko_cmd_system_get_bt_address();
     set_device_name(&pAddr->address);
-
   }
 }
 
@@ -293,12 +283,11 @@ static void handle_node_initialized_event(struct gecko_msg_mesh_node_initialized
 
     sensor_node_init();
     lpn_state_init();
-//    touch_state_init();
     enable_button_interrupts();
 
     mesh_lib_init(malloc,free,8);
 
-    lpn_state_init();
+    lpn_init();
 
     DI_Print("provisioned", DI_ROW_STATUS);
   } else {
@@ -329,7 +318,7 @@ void handle_node_provisioning_events(struct gecko_cmd_packet *pEvt)
       led_init(); /* shared GPIO pins used as LED output */
 #endif
       // start timer for blinking LEDs to indicate which node is being provisioned
-      gecko_cmd_hardware_set_soft_timer(TIMER_MS_2_TICKS(250),
+      gecko_cmd_hardware_set_soft_timer(((32768 * 250) / 1000),
                                         TIMER_ID_PROVISIONING,
                                         0);
       break;
@@ -414,7 +403,7 @@ void handle_le_connection_events(struct gecko_cmd_packet *pEvt)
       if (num_connections > 0) {
         if (--num_connections == 0) {
           DI_Print("", DI_ROW_CONNECTION);
-          lpn_state_init();
+          lpn_init();
         }
       }
       break;
@@ -478,7 +467,7 @@ void handle_timer_event(uint8_t handle)
 	case TIMER_ID_NODE_CONFIGURED:
 		if(!lpn_active){
 			printf("trying to initialize lpn...\r\n");
-			lpn_state_init();
+			lpn_init();
 		}
 		break;
 
@@ -495,6 +484,9 @@ void handle_timer_event(uint8_t handle)
   }
 }
 
+/**
+ * Initialize LPN functionality
+ */
 void lpn_init(void){
 	uint16 result;
 
@@ -542,6 +534,9 @@ void lpn_init(void){
 	}
 }
 
+/**
+ * Deinitialize LPN functionality
+ */
 void lpn_deinit(void){
 	uint16_t res;
 
@@ -568,6 +563,9 @@ void lpn_deinit(void){
 	DI_Print("LPN off", DI_ROW_LPN);
 }
 
+/**
+ * Initialize data memory struct for lpn node 1
+ */
 void lpn_state_init(void){
 	memset(&lpn_state, 0, sizeof(struct lpn_state));
 	uint16_t res = lpn_state_load();
@@ -644,6 +642,9 @@ static void lpn_state_changed(void){
 	printf("LPN State Changed\r\n");
 }
 
+/**
+ * helper function for get_adc to display adc values to terminal and LCD
+ */
 void display_adc(void){
 	if(lpn_state.adc_current == 0xFFFFu){
 		DI_Print("ADC: UNKNOWN", DI_ROW_TEMPERATURE);
@@ -693,11 +694,11 @@ void handle_external_signal_event(uint8_t signal){
 	CORE_EXIT_CRITICAL();
 	if (signal & EXT_SIGNAL_PB0_PRESS) {
 		printf("PB0 pressed\r\n");
-		people_count_decrease();
+//		people_count_decrease();
 	}
 	if (signal & EXT_SIGNAL_PB1_PRESS) {
 		printf("PB1 pressed\r\n");
-		people_count_increase();
+//		people_count_increase();
 	}
 	if(signal & EXT_SIGNAL_CAP_PRESS){
 //		printf("Cap sensor pressed\r\n");

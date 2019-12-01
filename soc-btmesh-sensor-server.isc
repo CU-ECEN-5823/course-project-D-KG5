@@ -113,7 +113,7 @@ appPlugin: slot-manager=false
     "PID": "0xf0b0",
     "VID": "0x1234",
     "CRPL": "0x0020",
-    "Features": "0x0003",
+    "Features": "0x000b",
     "Elements": [
       \{
         "Name": "Primary Element",

@@ -25,8 +25,8 @@
 #include "em_core.h"
 
 /* Sensor headers */
-#include "people_count_sensor.h"
-#include "temperature_sensor.h"
+//#include "people_count_sensor.h"
+//#include "temperature_sensor.h"
 
 //extern uint8_t adcAvgmapped;
 
