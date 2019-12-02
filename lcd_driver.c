@@ -61,7 +61,7 @@ void LCD_init(void)
 {
   memset(&LCD_data, 0, sizeof(LCD_data));
 
-  graphInit("SILICON LABORATORIES\nBluetooth Mesh Demo\n\n");
+  graphInit("Device: Search Arm\nLPN 1\n\n");
 
   LCD_write("initializing", LCD_ROW_STATUS);
 }

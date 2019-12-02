@@ -47,6 +47,7 @@ uint16_t get_adc();
 void lpn_state_init(void);
 void lpn_init(void);
 void lpn_deinit(void);
+void display_button(void);
 
 /// lpn state
 PACKSTRUCT(struct lpn_state {

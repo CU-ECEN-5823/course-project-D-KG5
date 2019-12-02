@@ -54,10 +54,11 @@ void send_onoff_request(uint8_t retrans){
 	req.kind = mesh_generic_request_on_off;
 	if(lpn_state.onoff_current){
 		req.on_off = MESH_GENERIC_ON_OFF_STATE_ON;
-		printf("BUTTON PRESSED\r\n");
+		display_button();
+
 	} else{
 		req.on_off = MESH_GENERIC_ON_OFF_STATE_OFF;
-		printf("BUTTON RELEASED\r\n");
+		display_button();
 	}
 	// increment transaction ID for each request, unless it's a retransmission
 	if (retrans == 0){

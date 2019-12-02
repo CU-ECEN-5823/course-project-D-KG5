@@ -52,12 +52,12 @@ typedef struct {
 #define DI_ROW_FRIEND       LCD_ROW_FRIEND
 #define DI_ROW_LPN          LCD_ROW_LPN
 #define DI_ROW_LIGHTNESS    LCD_ROW_LIGHTNESS
-#define DI_ROW_TEMPERATURE  LCD_ROW_TEMPERATURE
+#define DI_ROW_ADC  		LCD_ROW_TEMPERATURE
 #define DI_ROW_DELTAUV      LCD_ROW_DELTAUV
 #define DI_ROW_HUE          LCD_ROW_HUE
 #define DI_ROW_SATURATION   LCD_ROW_SATURATION
 #define DI_ROW_SENSOR_DATA  LCD_ROW_SENSOR_DATA
-#define DI_ROW_PEOPLE_COUNT LCD_ROW_PEOPLE_COUNT
+#define DI_ROW_BUTTON_STATE LCD_ROW_PEOPLE_COUNT
 
 #define DEFAULT_DISPLAY_INTERFACE \
   {                               \
@@ -73,12 +73,12 @@ typedef struct {
 #define DI_ROW_FRIEND       0
 #define DI_ROW_LPN          0
 #define DI_ROW_LIGHTNESS    0
-#define DI_ROW_TEMPERATURE  0
+#define DI_ROW_ADC  0
 #define DI_ROW_DELTAUV      0
 #define DI_ROW_HUE          0
 #define DI_ROW_SATURATION   0
 #define DI_ROW_SENSOR_DATA  0
-#define DI_ROW_PEOPLE_COUNT 0
+#define DI_ROW_BUTTON_STATE 0
 
 #define DEFAULT_DISPLAY_INTERFACE \
   {                               \

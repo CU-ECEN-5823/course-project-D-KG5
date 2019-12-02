@@ -32,7 +32,7 @@ void button_init(void){
   // configure pushbutton PB0 and PB1 and PF3 (cap) as inputs, with pull-up enabled
   GPIO_PinModeSet(BSP_BUTTON0_PORT, BSP_BUTTON0_PIN, gpioModeInputPull, 1);
   GPIO_PinModeSet(BSP_BUTTON1_PORT, BSP_BUTTON1_PIN, gpioModeInputPull, 1);
-  GPIO_PinModeSet(BSP_BUTTONCAP_PORT, BSP_BUTTONCAP_PIN, gpioModeInputPull, 1);
+  GPIO_PinModeSet(BSP_BUTTONCAP_PORT, BSP_BUTTONCAP_PIN, gpioModeInputPull, 0);
 }
 
 /***************************************************************************//**

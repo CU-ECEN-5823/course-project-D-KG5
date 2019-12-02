@@ -643,16 +643,31 @@ static void lpn_state_changed(void){
 }
 
 /**
+ * function to display button state values to terminal and LCD
+ */
+void display_button(void){
+	if(lpn_state.onoff_current == 0xFFu){
+		DI_Print("Button State: UNKNOWN", DI_ROW_BUTTON_STATE);
+		printf("Button State: UNKNOWN\r\n");
+	} else{
+		char button_disp[24];
+		snprintf(button_disp, 24, "Button State: %s", lpn_state.onoff_current ? "PRESSED" : "RELEASED");
+		DI_Print(button_disp, DI_ROW_BUTTON_STATE);
+		printf("Button State: %s\r\n", lpn_state.onoff_current ? "PRESSED" : "RELEASED");
+	}
+}
+
+/**
  * helper function for get_adc to display adc values to terminal and LCD
  */
 void display_adc(void){
 	if(lpn_state.adc_current == 0xFFFFu){
-		DI_Print("ADC: UNKNOWN", DI_ROW_TEMPERATURE);
+		DI_Print("ADC: UNKNOWN", DI_ROW_ADC);
 		printf("ADC: UNKNOWN\r\n");
 	} else{
 		char tmp[10];
 		snprintf(tmp, 21, "ADC: %3u ", lpn_state.adc_current);
-		DI_Print(tmp, DI_ROW_TEMPERATURE);
+		DI_Print(tmp, DI_ROW_ADC);
 		printf("Current ADC: %u\r\n", lpn_state.adc_current);
 		printf("Previous ADC: %u\r\n", lpn_state.adc_previous);
 	}
@@ -704,11 +719,13 @@ void handle_external_signal_event(uint8_t signal){
 //		printf("Cap sensor pressed\r\n");
 		CORE_DECLARE_IRQ_STATE;
 		CORE_ENTER_CRITICAL();
-		lpn_state.onoff_current = 0x01; /* set global var to 1 if button is pressed */
-		lpn_state.onoff_target = 0x00;
+		lpn_state.onoff_current = 1; /* set global var to 1 if button is pressed */
+		lpn_state.onoff_target = 0;
 		CORE_EXIT_CRITICAL();
 
 		lpn_state_changed();
+		
+		display_button();
 
 		send_onoff_request(0); /* 0 indicates that this is an original transmission */
 		/* start a repeating soft timer to trigger retransmission of the request after 50 ms delay */
@@ -717,12 +734,14 @@ void handle_external_signal_event(uint8_t signal){
 	if(signal & EXT_SIGNAL_CAP_RELEASE){
 //		printf("Cap sensor released\r\n");
 		CORE_ENTER_CRITICAL();
-		lpn_state.onoff_current = 0x00; /* set global var to 0 if button is released */
-		lpn_state.onoff_target = 0x01;
+		lpn_state.onoff_current = 0; /* set global var to 0 if button is released */
+		lpn_state.onoff_target = 1;
 		CORE_EXIT_CRITICAL();
 
 		lpn_state_changed();
 
+		display_button();
+		
 		send_onoff_request(0); /* 0 indicates that this is an original transmission */
 		/* start a repeating soft timer to trigger retransmission of the request after 50 ms delay */
 		gecko_cmd_hardware_set_soft_timer(((32768 * 50) / 1000), TIMER_ID_RETRANS, false);

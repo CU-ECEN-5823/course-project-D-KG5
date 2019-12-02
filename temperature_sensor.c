@@ -41,11 +41,11 @@ static temperature_8_t temperature = VALUE_IS_NOT_KNOWN;
 void display_temperature(void)
 {
   if ((temperature_8_t)VALUE_IS_NOT_KNOWN == temperature) {
-    DI_Print("Temperature: UNKNOWN", DI_ROW_TEMPERATURE);
+    DI_Print("Temperature: UNKNOWN", DI_ROW_ADC);
   } else {
     char tmp[21];
     snprintf(tmp, 21, "Temperature: %3d.%1dC ", temperature / 2, (temperature * 5) % 10);
-    DI_Print(tmp, DI_ROW_TEMPERATURE);
+    DI_Print(tmp, DI_ROW_ADC);
   }
 }
 

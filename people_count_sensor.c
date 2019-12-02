@@ -40,11 +40,11 @@ static count16_t people_count = VALUE_IS_NOT_KNOWN;
 void display_people_count(void)
 {
   if (VALUE_IS_NOT_KNOWN == people_count) {
-    DI_Print("People count:UNKNOWN", DI_ROW_PEOPLE_COUNT);
+    DI_Print("People count:UNKNOWN", DI_ROW_BUTTON_STATE);
   } else {
     char tmp[21];
     snprintf(tmp, 21, "People count: %5u ", people_count);
-    DI_Print(tmp, DI_ROW_PEOPLE_COUNT);
+    DI_Print(tmp, DI_ROW_BUTTON_STATE);
   }
 }
 
