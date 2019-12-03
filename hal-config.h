@@ -27,7 +27,7 @@
 #endif
 #ifndef HAL_I2CSENSOR_ENABLE
 #if defined(FEATURE_I2C_SENSOR)
-#define HAL_I2CSENSOR_ENABLE              (1)
+#define HAL_I2CSENSOR_ENABLE              (0)
 #else
 #define HAL_I2CSENSOR_ENABLE              (0)
 #endif

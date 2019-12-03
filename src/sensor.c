@@ -24,11 +24,6 @@
 #include "app.h"
 #include "em_core.h"
 
-/* Sensor headers */
-//#include "people_count_sensor.h"
-//#include "temperature_sensor.h"
-
-//extern uint8_t adcAvgmapped;
 
 /***************************************************************************//**
  * @addtogroup Sensor
@@ -103,7 +98,7 @@ void handle_sensor_server_get_request(struct gecko_msg_mesh_sensor_server_get_re
 //	}
 	if ((pEvt->property_id == AVERAGE_OUTPUT_VOLTAGE) || (pEvt->property_id == 0)) {
 		voltage_t muscle_adc = get_adc();
-		printf("muscle_adc: %u\r\n", muscle_adc);
+//		printf("muscle_adc: %u\r\n", muscle_adc);
 		len += mesh_sensor_data_to_buf(AVERAGE_OUTPUT_VOLTAGE,
 									   &sensor_data[len],
 									   (uint8_t*)&muscle_adc);

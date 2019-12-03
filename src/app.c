@@ -27,7 +27,6 @@
 
 /* Sensor headers */
 #include "sensor.h"
-#include "people_count_sensor.h"
 #include "em_core.h"
 
 /* Buttons and LEDs headers */
@@ -312,7 +311,7 @@ void handle_node_provisioning_events(struct gecko_cmd_packet *pEvt)
 {
   switch (BGLIB_MSG_ID(pEvt->header)) {
     case gecko_evt_mesh_node_provisioning_started_id:
-      printf("Started provisioning\r\n");
+//      printf("Started provisioning\r\n");
       DI_Print("provisioning...", DI_ROW_STATUS);
 #ifdef FEATURE_LED_BUTTON_ON_SAME_PIN
       led_init(); /* shared GPIO pins used as LED output */
@@ -335,9 +334,9 @@ void handle_node_provisioning_events(struct gecko_cmd_packet *pEvt)
         if (res) {
           printf("timer failure?!  %x\r\n", res);
         }
-		printf("node provisioned, got address=%x, ivi:%ld\r\n",
-			 pEvt->data.evt_mesh_node_provisioned.address,
-			 pEvt->data.evt_mesh_node_provisioned.iv_index);
+//		printf("node provisioned, got address=%x, ivi:%ld\r\n",
+//			 pEvt->data.evt_mesh_node_provisioned.address,
+//			 pEvt->data.evt_mesh_node_provisioned.iv_index);
       // stop LED blinking when provisioning complete
 		gecko_cmd_hardware_set_soft_timer(TIMER_REMOVE, TIMER_ID_PROVISIONING, 0);
       led_set_state(LED_STATE_OFF);
@@ -377,7 +376,7 @@ void handle_le_connection_events(struct gecko_cmd_packet *pEvt)
 {
   switch (BGLIB_MSG_ID(pEvt->header)) {
     case gecko_evt_le_connection_opened_id:
-      printf("evt:gecko_evt_le_connection_opened_id\r\n");
+//      printf("evt:gecko_evt_le_connection_opened_id\r\n");
       num_connections++;
       conn_handle = pEvt->data.evt_le_connection_opened.connection;
       DI_Print("connected", DI_ROW_CONNECTION);
@@ -385,10 +384,10 @@ void handle_le_connection_events(struct gecko_cmd_packet *pEvt)
       break;
 
     case gecko_evt_le_connection_parameters_id:
-      printf("evt:gecko_evt_le_connection_parameters_id: interval %u, latency %u, timeout %u\r\n",
-             pEvt->data.evt_le_connection_parameters.interval,
-             pEvt->data.evt_le_connection_parameters.latency,
-             pEvt->data.evt_le_connection_parameters.timeout);
+//      printf("evt:gecko_evt_le_connection_parameters_id: interval %u, latency %u, timeout %u\r\n",
+//             pEvt->data.evt_le_connection_parameters.interval,
+//             pEvt->data.evt_le_connection_parameters.latency,
+//             pEvt->data.evt_le_connection_parameters.timeout);
       break;
 
     case gecko_evt_le_connection_closed_id:
@@ -503,7 +502,7 @@ void lpn_init(void){
 		return;
 	}
 	lpn_active = 1;
-	printf("LPN initialized\r\n");
+//	printf("LPN initialized\r\n");
 	DI_Print("LPN on", DI_ROW_LPN);
 
 	// Configure the lpn with following parameters:
@@ -559,7 +558,7 @@ void lpn_deinit(void){
 		printf("LPN deinit failed (0x%x)\r\n", res);
 	}
 	lpn_active = 0;
-	printf("LPN deinitialized\r\n");
+//	printf("LPN deinitialized\r\n");
 	DI_Print("LPN off", DI_ROW_LPN);
 }
 
@@ -572,12 +571,12 @@ void lpn_state_init(void){
 	if (res == -1) {
 		printf("lpn_state_load(): size of lpn_state has changed, using defaults\r\n");
 	} else if(res == 0){
-		printf("lpn_state_load(): success\r\n");
+//		printf("lpn_state_load(): success\r\n");
 	} else{
 		printf("lpn_state_load(): failed with error 0x%u, using defaults\r\n", res);
 	}
-	printf("Old Current ADC: %u\r\n", lpn_state.adc_current);
-	printf("Old Previous ADC: %u\r\n", lpn_state.adc_previous);
+//	printf("Old Current ADC: %u\r\n", lpn_state.adc_current);
+//	printf("Old Previous ADC: %u\r\n", lpn_state.adc_previous);
 	lpn_state_changed();
 }
 
@@ -648,7 +647,7 @@ static void lpn_state_changed(void){
 void display_button(void){
 	if(lpn_state.onoff_current == 0xFFu){
 		DI_Print("Button State: UNKNOWN", DI_ROW_BUTTON_STATE);
-		printf("Button State: UNKNOWN\r\n");
+//		printf("Button State: UNKNOWN\r\n");
 	} else{
 		char button_disp[24];
 		snprintf(button_disp, 24, "Button State: %s", lpn_state.onoff_current ? "PRESSED" : "RELEASED");
@@ -663,13 +662,13 @@ void display_button(void){
 void display_adc(void){
 	if(lpn_state.adc_current == 0xFFFFu){
 		DI_Print("ADC: UNKNOWN", DI_ROW_ADC);
-		printf("ADC: UNKNOWN\r\n");
+//		printf("ADC: UNKNOWN\r\n");
 	} else{
 		char tmp[10];
 		snprintf(tmp, 21, "ADC: %3u ", lpn_state.adc_current);
 		DI_Print(tmp, DI_ROW_ADC);
-		printf("Current ADC: %u\r\n", lpn_state.adc_current);
-		printf("Previous ADC: %u\r\n", lpn_state.adc_previous);
+//		printf("Current ADC: %u\r\n", lpn_state.adc_current);
+//		printf("Previous ADC: %u\r\n", lpn_state.adc_previous);
 	}
 }
 
@@ -708,12 +707,10 @@ void handle_external_signal_event(uint8_t signal){
 	request_count = 3;
 	CORE_EXIT_CRITICAL();
 	if (signal & EXT_SIGNAL_PB0_PRESS) {
-		printf("PB0 pressed\r\n");
-//		people_count_decrease();
+//		printf("PB0 pressed\r\n");
 	}
 	if (signal & EXT_SIGNAL_PB1_PRESS) {
-		printf("PB1 pressed\r\n");
-//		people_count_increase();
+//		printf("PB1 pressed\r\n");
 	}
 	if(signal & EXT_SIGNAL_CAP_PRESS){
 //		printf("Cap sensor pressed\r\n");
@@ -792,41 +789,41 @@ static void handle_gecko_event(uint32_t evt_id, struct gecko_cmd_packet *pEvt)
       break;
 
     case gecko_evt_mesh_node_key_added_id:
-		printf("got new %s key with index %x\r\n",
-			 pEvt->data.evt_mesh_node_key_added.type == 0 ? "network" : "application",
-			 pEvt->data.evt_mesh_node_key_added.index);
+//		printf("got new %s key with index %x\r\n",
+//			 pEvt->data.evt_mesh_node_key_added.type == 0 ? "network" : "application",
+//			 pEvt->data.evt_mesh_node_key_added.index);
 
 		res = gecko_cmd_hardware_set_soft_timer(((32768 * 5000) / 1000),
 												 TIMER_ID_NODE_CONFIGURED,
 												 1)->result;
 		if (res) {
-			printf("timer failure?!  0x%x\r\n", res);
+			printf("timer failure  0x%x\r\n", res);
 		}
 		break;
 
     case gecko_evt_mesh_node_model_config_changed_id:
-		printf("model config changed\r\n");
+//		printf("model config changed\r\n");
 		res = gecko_cmd_hardware_set_soft_timer(((32768 * 5000) / 1000),
 												 TIMER_ID_NODE_CONFIGURED,
 												 1)->result;
 		if (res) {
-			printf("timer failure?!  0x%x\r\n", res);
+			printf("timer failure  0x%x\r\n", res);
 		}
 		break;
 
     case gecko_evt_mesh_node_config_set_id:
-		printf("model config set\r\n");
+//		printf("model config set\r\n");
 		// try to init lpn 5 seconds after configuration set
 		res = gecko_cmd_hardware_set_soft_timer(((32768 * 5000) / 1000),
 												 TIMER_ID_NODE_CONFIGURED,
 												 1)->result;
 		if (res) {
-			printf("timer failure?!  %x\r\n", res);
+			printf("timer failure  %x\r\n", res);
 		}
 		break;
 
     case gecko_evt_mesh_node_reset_id:
-      printf("evt: gecko_evt_mesh_node_reset_id\r\n");
+//      printf("evt: gecko_evt_mesh_node_reset_id\r\n");
       initiate_factory_reset();
       break;
 
@@ -837,8 +834,7 @@ static void handle_gecko_event(uint32_t evt_id, struct gecko_cmd_packet *pEvt)
       break;
 
     case gecko_evt_gatt_server_user_write_request_id:
-      if (gattdb_ota_control
-          == pEvt->data.evt_gatt_server_user_write_request.characteristic) {
+      if (gattdb_ota_control == pEvt->data.evt_gatt_server_user_write_request.characteristic) {
         enter_to_dfu_ota(pEvt->data.evt_gatt_server_user_write_request.connection);
       }
       break;
@@ -852,7 +848,7 @@ static void handle_gecko_event(uint32_t evt_id, struct gecko_cmd_packet *pEvt)
       break;
 
     case gecko_evt_mesh_lpn_friendship_established_id:
-      printf("friendship established\r\n");
+//      printf("friendship established\r\n");
       DI_Print("LPN with friend", DI_ROW_LPN);
       break;
 
@@ -864,12 +860,12 @@ static void handle_gecko_event(uint32_t evt_id, struct gecko_cmd_packet *pEvt)
                                                  TIMER_ID_FRIEND_FIND,
                                                  1)->result;
       if (res) {
-        printf("timer failure?!  %x\r\n", res);
+        printf("timer failure  %x\r\n", res);
       }
       break;
 
     case gecko_evt_mesh_lpn_friendship_terminated_id:
-      printf("friendship terminated\r\n");
+//      printf("friendship terminated\r\n");
       DI_Print("friend lost", DI_ROW_LPN);
       if (num_connections == 0) {
         // try again in 2 seconds
@@ -877,7 +873,7 @@ static void handle_gecko_event(uint32_t evt_id, struct gecko_cmd_packet *pEvt)
                                                    TIMER_ID_FRIEND_FIND,
                                                    1)->result;
         if (res) {
-          printf("timer failure?!  %x\r\n", res);
+          printf("timer failure  %x\r\n", res);
         }
       }
       break;
