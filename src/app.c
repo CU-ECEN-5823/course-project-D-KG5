@@ -66,6 +66,7 @@ typedef enum {
   /* Timer for toggling the the EXTCOMIN signal for the LCD display */
 	TIMER_ID_RESTART,
 	TIMER_ID_FACTORY_RESET,
+	TIMER_ID_TOUCH,
 	TIMER_ID_PROVISIONING,
 	TIMER_ID_RETRANS,
 	TIMER_ID_SAVE_STATE,
@@ -283,6 +284,9 @@ static void handle_node_initialized_event(struct gecko_msg_mesh_node_initialized
     sensor_node_init();
     lpn_state_init();
     enable_button_interrupts();
+//    gecko_cmd_hardware_set_soft_timer(((32768 * 1000) / 1000),
+//                                            TIMER_ID_TOUCH,
+//                                            0);
 
     mesh_lib_init(malloc,free,8);
 
@@ -444,6 +448,9 @@ void handle_timer_event(uint8_t handle)
     case TIMER_ID_RESTART:
       gecko_cmd_system_reset(0);
       break;
+
+    case TIMER_ID_TOUCH:
+    	break;
 
     case TIMER_ID_PROVISIONING:
       if (!init_done) {
@@ -725,6 +732,7 @@ void handle_external_signal_event(uint8_t signal){
 		display_button();
 
 		send_onoff_request(0); /* 0 indicates that this is an original transmission */
+
 		/* start a repeating soft timer to trigger retransmission of the request after 50 ms delay */
 		gecko_cmd_hardware_set_soft_timer(((32768 * 50) / 1000), TIMER_ID_RETRANS, false);
 	}
@@ -738,7 +746,6 @@ void handle_external_signal_event(uint8_t signal){
 		lpn_state_changed();
 
 		display_button();
-		
 		send_onoff_request(0); /* 0 indicates that this is an original transmission */
 		/* start a repeating soft timer to trigger retransmission of the request after 50 ms delay */
 		gecko_cmd_hardware_set_soft_timer(((32768 * 50) / 1000), TIMER_ID_RETRANS, false);
@@ -869,7 +876,7 @@ static void handle_gecko_event(uint32_t evt_id, struct gecko_cmd_packet *pEvt)
       DI_Print("friend lost", DI_ROW_LPN);
       if (num_connections == 0) {
         // try again in 2 seconds
-        res = gecko_cmd_hardware_set_soft_timer(((32768 * 5000) / 1000),
+        res = gecko_cmd_hardware_set_soft_timer(((32768 * 2000) / 1000),
                                                    TIMER_ID_FRIEND_FIND,
                                                    1)->result;
         if (res) {

@@ -61,7 +61,7 @@ void LCD_init(void)
 {
   memset(&LCD_data, 0, sizeof(LCD_data));
 
-  graphInit("Device: Search Arm\nLPN 1\n\n");
+  graphInit("Device: Search Arm\nLPN 1\r\n");
 
   LCD_write("initializing", LCD_ROW_STATUS);
 }
