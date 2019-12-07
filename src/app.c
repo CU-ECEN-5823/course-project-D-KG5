@@ -158,10 +158,6 @@ void appMain(gecko_configuration_t *pConfig)
   led_init();
   button_init();
 
-  adc_init();
-  letimer_init();
-  ldma_init();
-
 
   while (1) {
     // Event pointer for handling events
@@ -281,16 +277,14 @@ static void handle_node_initialized_event(struct gecko_msg_mesh_node_initialized
 
     _elem_index = 0;
 
-    sensor_node_init();
-    lpn_state_init();
-    enable_button_interrupts();
-//    gecko_cmd_hardware_set_soft_timer(((32768 * 1000) / 1000),
-//                                            TIMER_ID_TOUCH,
-//                                            0);
 
+
+    enable_button_interrupts();
+    lpn_state_init();
     mesh_lib_init(malloc,free,8);
 
     lpn_init();
+
 
     DI_Print("provisioned", DI_ROW_STATUS);
   } else {
@@ -317,9 +311,6 @@ void handle_node_provisioning_events(struct gecko_cmd_packet *pEvt)
     case gecko_evt_mesh_node_provisioning_started_id:
 //      printf("Started provisioning\r\n");
       DI_Print("provisioning...", DI_ROW_STATUS);
-#ifdef FEATURE_LED_BUTTON_ON_SAME_PIN
-      led_init(); /* shared GPIO pins used as LED output */
-#endif
       // start timer for blinking LEDs to indicate which node is being provisioned
       gecko_cmd_hardware_set_soft_timer(((32768 * 250) / 1000),
                                         TIMER_ID_PROVISIONING,
@@ -328,9 +319,12 @@ void handle_node_provisioning_events(struct gecko_cmd_packet *pEvt)
 
     case gecko_evt_mesh_node_provisioned_id:
     	_elem_index = 0;
+
+    	lpn_state_init();
+
     	mesh_lib_init(malloc,free,8);
     	sensor_node_init();
-    	lpn_state_init();
+
 
         res = gecko_cmd_hardware_set_soft_timer(((32768 * 30000) / 1000),
                                                    TIMER_ID_NODE_CONFIGURED,
@@ -345,9 +339,6 @@ void handle_node_provisioning_events(struct gecko_cmd_packet *pEvt)
 		gecko_cmd_hardware_set_soft_timer(TIMER_REMOVE, TIMER_ID_PROVISIONING, 0);
       led_set_state(LED_STATE_OFF);
       DI_Print("provisioned", DI_ROW_STATUS);
-#ifdef FEATURE_LED_BUTTON_ON_SAME_PIN
-      button_init(); /* shared GPIO pins used as button input */
-#endif
       enable_button_interrupts();
       init_done = 1;
       break;
@@ -516,20 +507,10 @@ void lpn_init(void){
 	// - Minimum friend queue length = 3
 	// - Poll timeout = 5 seconds
 	// - Retry interval = 0 ms
-	result = gecko_cmd_mesh_lpn_config(0, 3)->result;
+	result = gecko_cmd_mesh_lpn_configure(2, 5 * 1000)->result;
 	if (result) {
 		printf("LPN conf failed (0x%x)\r\n", result);
-	return;
-	}
-	result = gecko_cmd_mesh_lpn_config(1, (5 * 1000))->result;
-	if (result) {
-		printf("LPN conf failed (0x%x)\r\n", result);
-	return;
-	}
-	result = gecko_cmd_mesh_lpn_config(4, 0)->result;
-	if (result) {
-		printf("LPN conf failed (0x%x)\r\n", result);
-	return;
+		return;
 	}
 
 	printf("trying to find friend...\r\n");
@@ -580,11 +561,13 @@ void lpn_state_init(void){
 	} else if(res == 0){
 //		printf("lpn_state_load(): success\r\n");
 	} else{
-		printf("lpn_state_load(): failed with error 0x%u, using defaults\r\n", res);
+		printf("lpn_state_load(): failed with error 0x%x, using defaults\r\n", res);
 	}
-//	printf("Old Current ADC: %u\r\n", lpn_state.adc_current);
-//	printf("Old Previous ADC: %u\r\n", lpn_state.adc_previous);
-	lpn_state_changed();
+	printf("Old Current ADC: %u\r\n", lpn_state.adc_current);
+	printf("Old Previous ADC: %u\r\n", lpn_state.adc_previous);
+	if(lpn_active){
+		lpn_state_changed();
+	}
 }
 
 /***************************************************************************//**
@@ -598,7 +581,7 @@ void lpn_state_init(void){
 static uint16_t lpn_state_load(void){
 	struct gecko_msg_flash_ps_load_rsp_t* pLoad;
 
-	pLoad = gecko_cmd_flash_ps_load(0x4004);
+	pLoad = gecko_cmd_flash_ps_load(0x4008);
 
 	// Set default values if ps_load fail or size of lpn_state has changed
 	if (pLoad->result || (pLoad->value.len != sizeof(struct lpn_state))) {
@@ -632,7 +615,7 @@ static uint16_t lpn_state_load(void){
  * @return 0 if saving succeed
  ******************************************************************************/
 static uint8_t lpn_state_store(void){
-	BTSTACK_CHECK_RESPONSE(gecko_cmd_flash_ps_save(0x4004, sizeof(struct lpn_state), (const uint8*)&lpn_state));
+	BTSTACK_CHECK_RESPONSE(gecko_cmd_flash_ps_save(0x4008, sizeof(struct lpn_state), (const uint8*)&lpn_state));
 	printf("LPN State Stored\r\n");
 
 	return 0;
@@ -674,8 +657,8 @@ void display_adc(void){
 		char tmp[10];
 		snprintf(tmp, 21, "ADC: %3u ", lpn_state.adc_current);
 		DI_Print(tmp, DI_ROW_ADC);
-//		printf("Current ADC: %u\r\n", lpn_state.adc_current);
-//		printf("Previous ADC: %u\r\n", lpn_state.adc_previous);
+		printf("Current ADC: %u\r\n", lpn_state.adc_current);
+		printf("Previous ADC: %u\r\n", lpn_state.adc_previous);
 	}
 }
 
@@ -699,7 +682,9 @@ uint16_t get_adc(){
 	CORE_EXIT_CRITICAL();
 
 	display_adc();
-	lpn_state_changed();
+	if(lpn_active){
+		lpn_state_changed();
+	}
 
 	return lpn_state.adc_current;
 }
@@ -713,8 +698,14 @@ void handle_external_signal_event(uint8_t signal){
 	CORE_ENTER_CRITICAL();
 	request_count = 3;
 	CORE_EXIT_CRITICAL();
-	if (signal & EXT_SIGNAL_PB0_PRESS) {
-//		printf("PB0 pressed\r\n");
+	if (signal & FRIEND) {
+		adc_init();
+		letimer_init();
+		ldma_init();
+
+	    sensor_node_init();
+//	    lpn_state_init();
+
 	}
 	if (signal & EXT_SIGNAL_PB1_PRESS) {
 //		printf("PB1 pressed\r\n");
@@ -727,7 +718,9 @@ void handle_external_signal_event(uint8_t signal){
 		lpn_state.onoff_target = 0;
 		CORE_EXIT_CRITICAL();
 
-		lpn_state_changed();
+		if(lpn_active){
+			lpn_state_changed();
+		}
 		
 		display_button();
 
@@ -743,7 +736,9 @@ void handle_external_signal_event(uint8_t signal){
 		lpn_state.onoff_target = 1;
 		CORE_EXIT_CRITICAL();
 
-		lpn_state_changed();
+		if(lpn_active){
+			lpn_state_changed();
+		}
 
 		display_button();
 		send_onoff_request(0); /* 0 indicates that this is an original transmission */
@@ -856,6 +851,7 @@ static void handle_gecko_event(uint32_t evt_id, struct gecko_cmd_packet *pEvt)
 
     case gecko_evt_mesh_lpn_friendship_established_id:
 //      printf("friendship established\r\n");
+    	gecko_external_signal(FRIEND);
       DI_Print("LPN with friend", DI_ROW_LPN);
       break;
 
