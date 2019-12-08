@@ -49,31 +49,19 @@ void sensor_node_init(void)
    * NOTE: the properties must be ordered in ascending order by property ID
    */
   static const sensor_descriptor_t descriptors[NUMBER_OF_SENSORS] = {
-//    {
-//      .property_id = PEOPLE_COUNT,
-//      .positive_tolerance = TOLERANCE_UNSPECIFIED,
-//      .negative_tolerance = TOLERANCE_UNSPECIFIED,
-//      .sampling_function = SAMPLING_UNSPECIFIED,
-//      .measurement_period = MEASUREMENT_PERIOD_UNDEFINED,
-//      .update_interval = UPDATE_INTERVAL_UNDEFINED
-//    },
     {
       .property_id = AVERAGE_OUTPUT_VOLTAGE,
       .positive_tolerance = TOLERANCE_UNSPECIFIED,
       .negative_tolerance = TOLERANCE_UNSPECIFIED,
-      .sampling_function = SAMPLING_ARITHMETIC_MEAN,
-      .measurement_period = 3,
-      .update_interval = 1
+      .sampling_function = SAMPLING_UNSPECIFIED,
+      .measurement_period = MEASUREMENT_PERIOD_UNDEFINED,
+      .update_interval = UPDATE_INTERVAL_UNDEFINED
     }
   };
   uint16_t result = mesh_lib_sensor_server_init(SENSOR_ELEMENT,
                                                 NUMBER_OF_SENSORS,
                                                 descriptors);
   printf("sensor init result %02x\r\n", result);
-  // Initialize the People Count Sensor
-//  set_people_count(0);
-  // Initialize the Temperature Sensor
-//  init_temperature_sensor();
 }
 
 /***************************************************************************//**
@@ -89,16 +77,8 @@ void handle_sensor_server_get_request(struct gecko_msg_mesh_sensor_server_get_re
 	printf("evt:gecko_evt_mesh_sensor_server_get_request_id\r\n");
 	uint8_t sensor_data[5];
 	uint8_t len = 0;
-//	if ((pEvt->property_id == PEOPLE_COUNT) || (pEvt->property_id == 0)) {
-//		count16_t people_count = get_people_count();
-//		printf("people_count: %u\r\n", people_count);
-//		len += mesh_sensor_data_to_buf(PEOPLE_COUNT,
-//									   &sensor_data[len],
-//									   (uint8_t*)&people_count);
-//	}
 	if ((pEvt->property_id == AVERAGE_OUTPUT_VOLTAGE) || (pEvt->property_id == 0)) {
 		voltage_t muscle_adc = get_adc();
-//		printf("muscle_adc: %u\r\n", muscle_adc);
 		len += mesh_sensor_data_to_buf(AVERAGE_OUTPUT_VOLTAGE,
 									   &sensor_data[len],
 									   (uint8_t*)&muscle_adc);
@@ -174,11 +154,6 @@ void handle_sensor_server_publish_event(
   printf("evt:gecko_evt_mesh_sensor_server_publish_id\r\n");
   uint8_t sensor_data[32];
   uint8_t len = 0;
-
-//  count16_t people_count = get_people_count();
-//  len += mesh_sensor_data_to_buf(PEOPLE_COUNT,
-//                                 &sensor_data[len],
-//                                 (uint8_t*)&people_count);
 
   voltage_t muscle_adc = get_adc();
   len += mesh_sensor_data_to_buf(AVERAGE_OUTPUT_VOLTAGE,

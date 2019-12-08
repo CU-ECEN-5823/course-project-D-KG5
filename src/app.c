@@ -68,6 +68,7 @@ typedef enum {
 	TIMER_ID_FACTORY_RESET,
 	TIMER_ID_TOUCH,
 	TIMER_ID_PROVISIONING,
+	TIMER_ID_BUTTON,
 	TIMER_ID_RETRANS,
 	TIMER_ID_SAVE_STATE,
 	TIMER_ID_NODE_CONFIGURED,
@@ -94,6 +95,7 @@ static uint8_t init_done = 0;
 
 static uint8 lpn_active = 0;
 
+uint8_t friend_established = 0;
 uint16_t res = 0;
 uint8_t request_count = 0;
 uint8_t trid = 0; /* transaction id */
@@ -277,14 +279,11 @@ static void handle_node_initialized_event(struct gecko_msg_mesh_node_initialized
 
     _elem_index = 0;
 
-
-
     enable_button_interrupts();
     lpn_state_init();
     mesh_lib_init(malloc,free,8);
 
     lpn_init();
-
 
     DI_Print("provisioned", DI_ROW_STATUS);
   } else {
@@ -431,6 +430,7 @@ void enter_to_dfu_ota(uint8_t connection)
  ******************************************************************************/
 void handle_timer_event(uint8_t handle)
 {
+	CORE_DECLARE_IRQ_STATE;
   switch (handle) {
     case TIMER_ID_FACTORY_RESET:
       gecko_cmd_system_reset(0);
@@ -441,6 +441,13 @@ void handle_timer_event(uint8_t handle)
       break;
 
     case TIMER_ID_TOUCH:
+//    	CORE_ENTER_CRITICAL();
+//    	display_button();
+//		send_onoff_request(0); /* 0 indicates that this is an original transmission */
+//		/* start a repeating soft timer to trigger retransmission of the request after 50 ms delay */
+//		gecko_cmd_hardware_set_soft_timer(((32768 * 50) / 1000), TIMER_ID_RETRANS, false);
+//		GPIO_IntEnable(BSP_BUTTONCAP_PIN);
+//		CORE_EXIT_CRITICAL();
     	break;
 
     case TIMER_ID_PROVISIONING:
@@ -698,13 +705,16 @@ void handle_external_signal_event(uint8_t signal){
 	CORE_ENTER_CRITICAL();
 	request_count = 3;
 	CORE_EXIT_CRITICAL();
-	if (signal & FRIEND) {
-		adc_init();
-		letimer_init();
-		ldma_init();
-
-	    sensor_node_init();
-//	    lpn_state_init();
+	printf("Signal is %x\r\n", signal);
+	if (signal & EXT_SIGNAL_FRIENDSHIP_EST) {
+		if(friend_established == 0){
+			printf("Friendship established\r\n");
+			adc_init();
+			letimer_init();
+			ldma_init();
+			sensor_node_init();
+			friend_established = 1;
+		}
 
 	}
 	if (signal & EXT_SIGNAL_PB1_PRESS) {
@@ -722,7 +732,7 @@ void handle_external_signal_event(uint8_t signal){
 			lpn_state_changed();
 		}
 		
-		display_button();
+//		display_button();
 
 		send_onoff_request(0); /* 0 indicates that this is an original transmission */
 
@@ -740,7 +750,8 @@ void handle_external_signal_event(uint8_t signal){
 			lpn_state_changed();
 		}
 
-		display_button();
+//		display_button();
+
 		send_onoff_request(0); /* 0 indicates that this is an original transmission */
 		/* start a repeating soft timer to trigger retransmission of the request after 50 ms delay */
 		gecko_cmd_hardware_set_soft_timer(((32768 * 50) / 1000), TIMER_ID_RETRANS, false);
@@ -851,7 +862,7 @@ static void handle_gecko_event(uint32_t evt_id, struct gecko_cmd_packet *pEvt)
 
     case gecko_evt_mesh_lpn_friendship_established_id:
 //      printf("friendship established\r\n");
-    	gecko_external_signal(FRIEND);
+    	gecko_external_signal(EXT_SIGNAL_FRIENDSHIP_EST);
       DI_Print("LPN with friend", DI_ROW_LPN);
       break;
 
