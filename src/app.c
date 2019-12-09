@@ -95,6 +95,8 @@ static uint8_t init_done = 0;
 
 static uint8 lpn_active = 0;
 
+uint8_t button = 0;
+
 uint8_t friend_established = 0;
 uint16_t res = 0;
 uint8_t request_count = 0;
@@ -190,7 +192,7 @@ void appMain(gecko_configuration_t *pConfig)
  ******************************************************************************/
 static void initiate_factory_reset(void)
 {
-  printf("factory reset\r\n");
+//  printf("factory reset\r\n");
   DI_Print("\n***\nFACTORY RESET\n***", DI_ROW_STATUS);
 
   // If connection is open then close it before rebooting
@@ -222,13 +224,13 @@ static void set_device_name(bd_addr *pAddr){
   snprintf(name, 20, "Search Arm %02x:%02x",
            pAddr->addr[1], pAddr->addr[0]);
 
-  printf("Device name: '%s'\r\n", name);
+//  printf("Device name: '%s'\r\n", name);
 
   result = gecko_cmd_gatt_server_write_attribute_value(gattdb_device_name, 0,
 		  strlen(name), (uint8_t *)name)->result;
   if (result) {
-	  printf("gecko_cmd_gatt_server_write_attribute_value() failed, code %x\r\n",
-           result);
+//	  printf("gecko_cmd_gatt_server_write_attribute_value() failed, code %x\r\n",
+//           result);
   }
 
   // Show device name on the LCD
@@ -268,14 +270,14 @@ static void handle_boot_event(void)
  * @param[in] pEvt  Pointer to mesh node initialized event.
  ******************************************************************************/
 static void handle_node_initialized_event(struct gecko_msg_mesh_node_initialized_evt_t *pEvt){
-  printf("node initialized\r\n");
+//  printf("node initialized\r\n");
 
   BTSTACK_CHECK_RESPONSE(gecko_cmd_mesh_generic_client_init());
 
   if (pEvt->provisioned) {
-    printf("node is provisioned. address:%x, ivi:%ld\r\n",
-           pEvt->address,
-           pEvt->ivi);
+//    printf("node is provisioned. address:%x, ivi:%ld\r\n",
+//           pEvt->address,
+//           pEvt->ivi);
 
     _elem_index = 0;
 
@@ -287,9 +289,9 @@ static void handle_node_initialized_event(struct gecko_msg_mesh_node_initialized
 
     DI_Print("provisioned", DI_ROW_STATUS);
   } else {
-    printf("node is unprovisioned\r\n");
+//    printf("node is unprovisioned\r\n");
     DI_Print("unprovisioned", DI_ROW_STATUS);
-    printf("starting unprovisioned beaconing...\r\n");
+//    printf("starting unprovisioned beaconing...\r\n");
     // Enable ADV and GATT provisioning bearer
     BTSTACK_CHECK_RESPONSE(gecko_cmd_mesh_node_start_unprov_beaconing(PB_ADV | PB_GATT));
   }
@@ -343,8 +345,8 @@ void handle_node_provisioning_events(struct gecko_cmd_packet *pEvt)
       break;
 
     case gecko_evt_mesh_node_provisioning_failed_id:
-      printf("provisioning failed, code %x\r\n",
-             pEvt->data.evt_mesh_node_provisioning_failed.result);
+//      printf("provisioning failed, code %x\r\n",
+//             pEvt->data.evt_mesh_node_provisioning_failed.result);
       DI_Print("prov failed", DI_ROW_STATUS);
       // start a one-shot timer that will trigger soft reset after small delay
       gecko_cmd_hardware_set_soft_timer(((32768 * 2000) / 1000),
@@ -390,8 +392,8 @@ void handle_le_connection_events(struct gecko_cmd_packet *pEvt)
         // Enter to DFU OTA mode
         gecko_cmd_system_reset(2);
       }
-      printf("evt:conn closed, reason 0x%x\r\n",
-             pEvt->data.evt_le_connection_closed.reason);
+//      printf("evt:conn closed, reason 0x%x\r\n",
+//             pEvt->data.evt_le_connection_closed.reason);
       conn_handle = 0xFF;
       if (num_connections > 0) {
         if (--num_connections == 0) {
@@ -430,7 +432,7 @@ void enter_to_dfu_ota(uint8_t connection)
  ******************************************************************************/
 void handle_timer_event(uint8_t handle)
 {
-	CORE_DECLARE_IRQ_STATE;
+//	CORE_DECLARE_IRQ_STATE;
   switch (handle) {
     case TIMER_ID_FACTORY_RESET:
       gecko_cmd_system_reset(0);
@@ -441,13 +443,6 @@ void handle_timer_event(uint8_t handle)
       break;
 
     case TIMER_ID_TOUCH:
-//    	CORE_ENTER_CRITICAL();
-//    	display_button();
-//		send_onoff_request(0); /* 0 indicates that this is an original transmission */
-//		/* start a repeating soft timer to trigger retransmission of the request after 50 ms delay */
-//		gecko_cmd_hardware_set_soft_timer(((32768 * 50) / 1000), TIMER_ID_RETRANS, false);
-//		GPIO_IntEnable(BSP_BUTTONCAP_PIN);
-//		CORE_EXIT_CRITICAL();
     	break;
 
     case TIMER_ID_PROVISIONING:
@@ -470,13 +465,13 @@ void handle_timer_event(uint8_t handle)
 
 	case TIMER_ID_NODE_CONFIGURED:
 		if(!lpn_active){
-			printf("trying to initialize lpn...\r\n");
+//			printf("trying to initialize lpn...\r\n");
 			lpn_init();
 		}
 		break;
 
 	case TIMER_ID_FRIEND_FIND:
-		printf("trying to find friend...\r\n");
+//		printf("trying to find friend...\r\n");
 		res = gecko_cmd_mesh_lpn_establish_friendship(0)->result;
 		if(res != 0){
 			printf("Ret code 0x%x\r\n", res);
@@ -503,7 +498,7 @@ void lpn_init(void){
 	// Initialize LPN functionality.
 	result = gecko_cmd_mesh_lpn_init()->result;
 	if (result) {
-		printf("LPN init failed (0x%x)\r\n", result);
+//		printf("LPN init failed (0x%x)\r\n", result);
 		return;
 	}
 	lpn_active = 1;
@@ -511,16 +506,16 @@ void lpn_init(void){
 	DI_Print("LPN on", DI_ROW_LPN);
 
 	// Configure the lpn with following parameters:
-	// - Minimum friend queue length = 3
+	// - Minimum friend queue length = 2
 	// - Poll timeout = 5 seconds
 	// - Retry interval = 0 ms
 	result = gecko_cmd_mesh_lpn_configure(2, 5 * 1000)->result;
 	if (result) {
-		printf("LPN conf failed (0x%x)\r\n", result);
+//		printf("LPN conf failed (0x%x)\r\n", result);
 		return;
 	}
 
-	printf("trying to find friend...\r\n");
+//	printf("trying to find friend...\r\n");
 	result = gecko_cmd_mesh_lpn_establish_friendship(0)->result;
 
 	if (result != 0) {
@@ -545,12 +540,12 @@ void lpn_deinit(void){
 	// Terminate friendship if exist
 	res = gecko_cmd_mesh_lpn_terminate_friendship()->result;
 	if (res) {
-		printf("Friendship termination failed (0x%x)\r\n", res);
+//		printf("Friendship termination failed (0x%x)\r\n", res);
 	}
 	// turn off lpn feature
 	res = gecko_cmd_mesh_lpn_deinit()->result;
 	if (res) {
-		printf("LPN deinit failed (0x%x)\r\n", res);
+//		printf("LPN deinit failed (0x%x)\r\n", res);
 	}
 	lpn_active = 0;
 //	printf("LPN deinitialized\r\n");
@@ -564,14 +559,16 @@ void lpn_state_init(void){
 	memset(&lpn_state, 0, sizeof(struct lpn_state));
 	uint16_t res = lpn_state_load();
 	if (res == -1) {
-		printf("lpn_state_load(): size of lpn_state has changed, using defaults\r\n");
+//		printf("lpn_state_load(): size of lpn_state has changed, using defaults\r\n");
 	} else if(res == 0){
 //		printf("lpn_state_load(): success\r\n");
 	} else{
 		printf("lpn_state_load(): failed with error 0x%x, using defaults\r\n", res);
 	}
+	printf("********Persistent Data**********\r\n");
 	printf("Old Current ADC: %u\r\n", lpn_state.adc_current);
 	printf("Old Previous ADC: %u\r\n", lpn_state.adc_previous);
+	printf("*********************************\r\n");
 	if(lpn_active){
 		lpn_state_changed();
 	}
@@ -623,7 +620,7 @@ static uint16_t lpn_state_load(void){
  ******************************************************************************/
 static uint8_t lpn_state_store(void){
 	BTSTACK_CHECK_RESPONSE(gecko_cmd_flash_ps_save(0x4008, sizeof(struct lpn_state), (const uint8*)&lpn_state));
-	printf("LPN State Stored\r\n");
+//	printf("LPN State Stored\r\n");
 
 	return 0;
 }
@@ -635,7 +632,7 @@ static uint8_t lpn_state_store(void){
  ******************************************************************************/
 static void lpn_state_changed(void){
 	gecko_cmd_hardware_set_soft_timer(((32768 * 500) / 1000), TIMER_ID_SAVE_STATE, 1);
-	printf("LPN State Changed\r\n");
+//	printf("LPN State Changed\r\n");
 }
 
 /**
@@ -647,9 +644,9 @@ void display_button(void){
 //		printf("Button State: UNKNOWN\r\n");
 	} else{
 		char button_disp[24];
-		snprintf(button_disp, 24, "Button State: %s", lpn_state.onoff_current ? "PRESSED" : "RELEASED");
+		snprintf(button_disp, 24, "Button State: %s", lpn_state.onoff_current ? "PRESS" : "RELEASE");
 		DI_Print(button_disp, DI_ROW_BUTTON_STATE);
-		printf("Button State: %s\r\n", lpn_state.onoff_current ? "PRESSED" : "RELEASED");
+//		printf("Button State: %s\r\n", lpn_state.onoff_current ? "PRESS" : "RELEASE");
 	}
 }
 
@@ -664,8 +661,8 @@ void display_adc(void){
 		char tmp[10];
 		snprintf(tmp, 21, "ADC: %3u ", lpn_state.adc_current);
 		DI_Print(tmp, DI_ROW_ADC);
-		printf("Current ADC: %u\r\n", lpn_state.adc_current);
-		printf("Previous ADC: %u\r\n", lpn_state.adc_previous);
+//		printf("Current ADC: %u\r\n", lpn_state.adc_current);
+//		printf("Previous ADC: %u\r\n", lpn_state.adc_previous);
 	}
 }
 
@@ -705,10 +702,10 @@ void handle_external_signal_event(uint8_t signal){
 	CORE_ENTER_CRITICAL();
 	request_count = 3;
 	CORE_EXIT_CRITICAL();
-	printf("Signal is %x\r\n", signal);
+//	printf("Signal is %x\r\n", signal);
 	if (signal & EXT_SIGNAL_FRIENDSHIP_EST) {
 		if(friend_established == 0){
-			printf("Friendship established\r\n");
+//			printf("Friendship established\r\n");
 			adc_init();
 			letimer_init();
 			ldma_init();
@@ -731,8 +728,6 @@ void handle_external_signal_event(uint8_t signal){
 		if(lpn_active){
 			lpn_state_changed();
 		}
-		
-//		display_button();
 
 		send_onoff_request(0); /* 0 indicates that this is an original transmission */
 
@@ -750,11 +745,10 @@ void handle_external_signal_event(uint8_t signal){
 			lpn_state_changed();
 		}
 
-//		display_button();
-
 		send_onoff_request(0); /* 0 indicates that this is an original transmission */
 		/* start a repeating soft timer to trigger retransmission of the request after 50 ms delay */
 		gecko_cmd_hardware_set_soft_timer(((32768 * 50) / 1000), TIMER_ID_RETRANS, false);
+
 	}
 	if(signal & EXT_SIGNAL_LDMA_INT){
 		get_adc();
@@ -867,7 +861,7 @@ static void handle_gecko_event(uint32_t evt_id, struct gecko_cmd_packet *pEvt)
       break;
 
     case gecko_evt_mesh_lpn_friendship_failed_id:
-      printf("friendship failed\r\n");
+//      printf("friendship failed\r\n");
       DI_Print("no friend", DI_ROW_LPN);
       // try again in 2 seconds
       res = gecko_cmd_hardware_set_soft_timer(((32768 * 2000) / 1000),

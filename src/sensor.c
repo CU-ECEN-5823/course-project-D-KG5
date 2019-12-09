@@ -154,7 +154,7 @@ void handle_sensor_server_publish_event(
   printf("evt:gecko_evt_mesh_sensor_server_publish_id\r\n");
   uint8_t sensor_data[32];
   uint8_t len = 0;
-
+//  AVERAGE_OUTPUT_VOLTAGE
   voltage_t muscle_adc = get_adc();
   len += mesh_sensor_data_to_buf(AVERAGE_OUTPUT_VOLTAGE,
                                  &sensor_data[len],
