@@ -9,7 +9,8 @@ The device will remain in the lowest power mode possible, waking to take electri
 [Team project folder](https://drive.google.com/open?id=1ULRoi2IbtZnrOraMbmO0h2yKDjaP__Aq)
 
 Things that work as of 11/21/19:
-- Muscle sensor ADC driver: 95% (works as desired)
-- Touch sensor GPIO driver: 95% (works as desired)
-- BT Mesh Sensor Stack: 50% (works but not tested with latest code)
-- BT Mesh Generic OnOff Stack: 25% (works but not as desired)
+- Muscle sensor ADC driver: 100% (works as desired)
+- Touch sensor GPIO driver: 100% (works as desired)
+- BT Mesh Sensor Server: 100% (works as desired)
+- BT Mesh Generic OnOff Client: 100% (works as desired)
+- BT Mesh LPN: 100% (works as desired)
