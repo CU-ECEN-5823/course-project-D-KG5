@@ -658,8 +658,8 @@ void display_adc(void){
 		DI_Print("ADC: UNKNOWN", DI_ROW_ADC);
 //		printf("ADC: UNKNOWN\r\n");
 	} else{
-		char tmp[10];
-		snprintf(tmp, 21, "ADC: %3u ", lpn_state.adc_current);
+		char tmp[21];
+		snprintf(tmp, 21, "Muscle Activity: %3u", lpn_state.adc_current);
 		DI_Print(tmp, DI_ROW_ADC);
 //		printf("Current ADC: %u\r\n", lpn_state.adc_current);
 //		printf("Previous ADC: %u\r\n", lpn_state.adc_previous);
@@ -723,16 +723,19 @@ void handle_external_signal_event(uint8_t signal){
 		CORE_ENTER_CRITICAL();
 		lpn_state.onoff_current = 1; /* set global var to 1 if button is pressed */
 		lpn_state.onoff_target = 0;
+		button = 1;
 		CORE_EXIT_CRITICAL();
 
 		if(lpn_active){
 			lpn_state_changed();
 		}
 
-		send_onoff_request(0); /* 0 indicates that this is an original transmission */
-
-		/* start a repeating soft timer to trigger retransmission of the request after 50 ms delay */
-		gecko_cmd_hardware_set_soft_timer(((32768 * 50) / 1000), TIMER_ID_RETRANS, false);
+		if(button == 1){
+			send_onoff_request(0); /* 0 indicates that this is an original transmission */
+			/* start a repeating soft timer to trigger retransmission of the request after 50 ms delay */
+			gecko_cmd_hardware_set_soft_timer(((32768 * 50) / 1000), TIMER_ID_RETRANS, false);
+			button = 0;
+		}
 	}
 	if(signal & EXT_SIGNAL_CAP_RELEASE){
 //		printf("Cap sensor released\r\n");
@@ -745,9 +748,12 @@ void handle_external_signal_event(uint8_t signal){
 			lpn_state_changed();
 		}
 
-		send_onoff_request(0); /* 0 indicates that this is an original transmission */
-		/* start a repeating soft timer to trigger retransmission of the request after 50 ms delay */
-		gecko_cmd_hardware_set_soft_timer(((32768 * 50) / 1000), TIMER_ID_RETRANS, false);
+		if(button == 0){
+			send_onoff_request(0); /* 0 indicates that this is an original transmission */
+			/* start a repeating soft timer to trigger retransmission of the request after 50 ms delay */
+			gecko_cmd_hardware_set_soft_timer(((32768 * 50) / 1000), TIMER_ID_RETRANS, false);
+			button = 1;
+		}
 
 	}
 	if(signal & EXT_SIGNAL_LDMA_INT){

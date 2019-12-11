@@ -61,7 +61,7 @@ void sensor_node_init(void)
   uint16_t result = mesh_lib_sensor_server_init(SENSOR_ELEMENT,
                                                 NUMBER_OF_SENSORS,
                                                 descriptors);
-  printf("sensor init result %02x\r\n", result);
+//  printf("sensor init result %02x\r\n", result);
 }
 
 /***************************************************************************//**
@@ -74,7 +74,7 @@ void sensor_node_init(void)
  * @param[in] pEvt  Pointer to sensor server get request event.
  ******************************************************************************/
 void handle_sensor_server_get_request(struct gecko_msg_mesh_sensor_server_get_request_evt_t *pEvt){
-	printf("evt:gecko_evt_mesh_sensor_server_get_request_id\r\n");
+//	printf("evt:gecko_evt_mesh_sensor_server_get_request_id\r\n");
 	uint8_t sensor_data[5];
 	uint8_t len = 0;
 	if ((pEvt->property_id == AVERAGE_OUTPUT_VOLTAGE) || (pEvt->property_id == 0)) {
